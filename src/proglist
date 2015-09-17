@@ -1,0 +1,8 @@
+wkld_gen.sh 2 0 2 large 0 0 1
+wkld_gen.sh 2 5 2 large 0 0 1
+wkld_gen.sh 2 0 2 large 0 0 2
+wkld_gen.sh 2 5 2 large 0 0 2
+wkld_gen.sh 2 0 2 large 0 0 3
+wkld_gen.sh 2 5 2 large 0 0 3
+wkld_gen.sh 2 0 2 large 0 0 4
+wkld_gen.sh 2 5 2 large 0 0 4

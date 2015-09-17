@@ -1,0 +1,33 @@
+#! /bin/bash
+
+if [ $# -lt 3 ]; then
+    echo "usage:"
+    echo "    $0 eventfile outfile progfile"
+    exit
+fi
+
+eventfile=$1    # file that contains names of events that will be measured
+outfile=$2      # file to write the training data to
+progfile=$3     # file with a list of programs and program arguments
+
+rm -f $outfile
+
+# create header
+while read event
+do
+    printf "${event}\t" >> $outfile
+done < $eventfile
+printf "\n" >> $outfile
+
+# conversion of events in eventfile to hexcodes
+rm -f temp_hex_codes
+get_hex_codes_from_names $eventfile >> temp_hex_codes
+
+
+# read each line of prog and prog_args
+while read line
+do
+    perf_counter $outfile temp_hex_codes $line
+done < $progfile
+
+rm -f temp_hex_codes

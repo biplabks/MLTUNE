@@ -1,0 +1,50 @@
+#! /home/b_s183/.local/bin/python
+
+#TODO delimiter from user
+
+# CAVEATS
+# all training data must be numeric
+
+
+import numpy as np
+from sklearn import linear_model
+import pickle
+import io
+
+import sys
+import argparse
+
+def usage():
+    print ("This is usage")
+
+def main():
+    
+    parser = argparse.ArgumentParser(description='Train an ML model')
+    required = parser.add_argument_group('required options')
+
+    required.add_argument('-x', '--trainfile', required=True, help='File containing training data')
+    required.add_argument('-y', '--targetfile', required=True, help='File containing target data')
+    required.add_argument('-o', '--modelfile', required=True, help='Output filename for trained model object')
+    #required.add_argument('-t', '--targettype', default=int)
+    
+    args = parser.parse_args()
+
+    #X = np.loadtxt(args.trainfile, skiprows=1)
+    X = np.loadtxt(args.trainfile)
+    #Y = np.loadtxt(args.targetfile, dtype=args.targettype)
+    #Y = np.loadtxt(args.targetfile)   
+    Y = np.genfromtxt(args.targetfile,dtype='str')
+
+    assert len(X) == len(Y), "length mismatch between train and target data"
+
+    clf = linear_model.LogisticRegression()
+    clf.fit(X, Y)
+    #r = clf.predict(train_data)
+    
+    with open(args.modelfile, "wb") as outfile:
+        pickle.dump(clf, outfile, pickle.HIGHEST_PROTOCOL)
+
+
+
+if __name__ == "__main__":
+    main()

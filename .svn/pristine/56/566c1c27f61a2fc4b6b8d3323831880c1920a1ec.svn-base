@@ -1,0 +1,70 @@
+Description:
+------------
+
+  A small machine learning framework that does the following:
+    - training data set generation
+    - machine-learning model creation and saving to disk
+    - invoking the model with test data instance(s)
+
+  The framework has four executables (bash and python):
+    - training_data_gen
+      This is a shell script that takes input:
+        -> a list of events to be measured; values of these
+           events form a row of training data
+           For a full list of supported events, execute:
+             likwid-perfctr -e | grep ", PMC" | awk -F ',' '{print $1}'
+        -> a list of programs and optional program arguments
+           that will be profiled
+
+      It outputs a text file consisting of
+        -> a header line for the all the performance events
+        -> as many rows as many programs, where each row
+          contains the values of events that have been measured
+
+    - train_ml
+      This is a python script that takes input:
+        -> a training data set, output by training_data_gen
+        -> a target data set; this will need to be created 
+           by the user depending on his/her objective
+           function
+        -> the name of the binary file where the trained
+           model will be written to
+    
+      It outputs a binary file that contains the serialized
+      model object
+
+    - test_ml
+      This is a python script that takes input:
+        -> a test data set, formatted similarly to the
+           training data set
+        -> a binary file containing the model to be
+           invoked
+
+      It outputs the results from the model
+  
+    - perf_counter
+      This is a shell script that is called internally to measure
+      performance events. This is the file that should be 
+      modified if the user wants to add code to automatically
+      generate target data based on his/her objective function
+
+    - get_hex_codes_from_names
+      This is a shell script that is called internally to
+      convert the provided names of the performance events to
+      hex codes
+
+Dependencies:
+-------------
+
+  - likwid
+  - bash shell
+  - python
+    - scikit-learn
+    - numpy
+  
+Installation:
+-------------
+
+  After checking out the SVN repository,
+  add the bin directory to your path
+
