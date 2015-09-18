@@ -25,9 +25,10 @@ case $option in
       echo "1. Retrieve Event list"
       echo "2. Generate Target Data"
       echo "3. Normalize feature list"
-      echo "4. Split feature list"
-      echo "5. Train Model"
-      echo "6. Test Model"
+      echo "4. Scale Feature list"
+      echo "5. Split feature list"
+      echo "6. Train Model"
+      echo "7. Test Model"
       read secOption
       
       case $secOption in
@@ -44,11 +45,19 @@ case $option in
 	    ;;
          3)
 	    echo "Please enter the filename of unnormalized featurelist(outlist):"
-            read fileName
-            ./normalize.py -x $fileName
-            echo "Please check file <featurelist> for normalized features"
+            read fileName1
+	    echo "Please enter the filename of program exec time list(execlist):"
+	    read fileName2
+            ./normalize.py -x $fileName1 -y $fileName2
+            echo "Please check file <normfeaturelist> for normalized features"
             ;;
-	 4)
+         4)
+            echo "Please enter the filename of normalized feature(normfeaturelist):"
+	    read fileName
+	    ./scale.py -x $fileName
+	    echo "Please check file <featurelist> for scaled features"
+	    ;;
+	 5)
 	    echo "Please enter the filename of feature list(featurelist):"
             read fetList
             echo "Please enter the filename of target data(targetdata):"
@@ -58,7 +67,7 @@ case $option in
             ./split_train_test.py -x $fetList -y $tardata -z $splitper
             echo "Please check <trainlist>,<testlist>,and <targetDataToTrain> for output"
 	    ;;
-         5)
+         6)
 	    echo "Please enter the filename of feature list(trainlist):"
 	    read trainfile
             echo "Please enter the filename of targetdata(targetDataToTrain):"
@@ -66,7 +75,7 @@ case $option in
             ./train_ml.py -x $trainfile -y $trdata -o bin_file
             echo "Model has been deployed in bin_file" 
 	    ;;
-         6) 
+         7) 
 	    echo "Please enter the filename of test data(testlist):"
             read tlist
             ./test_ml.py -x $tlist -m bin_file

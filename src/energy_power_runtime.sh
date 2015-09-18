@@ -36,6 +36,15 @@ do
    #fi
 done < $progfile
 
+#get only execution time
+echo "Generating execution time for optimized program"
+while read line
+do
+  read line
+  echo $line
+  get_primary_runtime.sh $line >> execlist
+done < $progfile
+
 #echo "Performing power data collection"
 #while read line
 #do

@@ -15,17 +15,16 @@ def main():
     parser = argparse.ArgumentParser(description='Normalize the feature values')
     required = parser.add_argument_group('required options')
 
-    required.add_argument('-x', '--outlist', required=True, help='File containing feature values')
-    required.add_argument('-y', '--execlist', required=True, help='File containing exec list')
+    required.add_argument('-x', '--normfeaturelist', required=True, help='File containing feature values')
     
     args = parser.parse_args()
 
-    X = np.loadtxt(args.outlist, skiprows=1)
-    Y = np.loadtxt(args.execlist, ndmin=2)
+    X = np.loadtxt(args.normfeaturelist)
 
     #f = open("trainlist","wb")
-    result = X/Y
-    np.savetxt('normfeaturelist', result, fmt='%.2f', delimiter='\t')
+    min_max_scaler = preprocessing.MinMaxScaler(feature_range=(-1,1))
+    X_train_minmax = min_max_scaler.fit_transform(X)
+    np.savetxt('featurelist', X_train_minmax, fmt='%.2g', delimiter='\t')
     #f.close()
 
 if __name__ == "__main__":
