@@ -3,6 +3,7 @@
 import numpy as np
 from sklearn import linear_model
 from sklearn import preprocessing
+from sklearn.feature_selection import VarianceThreshold
 import pickle
 
 import sys
@@ -24,7 +25,9 @@ def main():
     Y = np.loadtxt(args.execlist, ndmin=2)
 
     #f = open("trainlist","wb")
-    result = X/Y
+    newResult = X/Y
+    sel = VarianceThreshold(threshold=(.8*(1-.8)))
+    result = sel.fit_transform(newResult)
     np.savetxt('normfeaturelist', result, fmt='%.2f', delimiter='\t')
     #f.close()
 

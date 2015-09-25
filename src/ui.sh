@@ -18,6 +18,10 @@ case $option in
       read metric
       echo "Please enter classification(bin/mult):"
       read clf
+      #retrieve event list
+      ./retevents.sh      
+      
+      #generate training data, normalize, scaling, split and train model
       ./train_data_gen.sh eventlist outlist proglist -l $metric -c $clf -u automatic
 	;;
    2)
@@ -26,14 +30,16 @@ case $option in
       echo "2. Generate Target Data"
       echo "3. Normalize feature list"
       echo "4. Scale Feature list"
-      echo "5. Split feature list"
-      echo "6. Train Model"
-      echo "7. Test Model"
+      echo "5. Feature selection"
+      echo "6. Split feature list"
+      echo "7. Train Model"
+      echo "8. Test Model"
       read secOption
       
       case $secOption in
-         1) likwid-perfctr -e | grep ", PMC" | awk -F ',' '{print $1}' >> alleventlist
-	    echo "Please check file <alleventlist> for event lists"
+         1) 
+	    ./retevents.sh
+	    echo "Please check file <eventlist> for event lists"
 	    ;;
 	 2) 
 	    echo "Please enter metric(power/energy/exec):"
@@ -55,9 +61,18 @@ case $option in
             echo "Please enter the filename of normalized feature(normfeaturelist):"
 	    read fileName
 	    ./scale.py -x $fileName
-	    echo "Please check file <featurelist> for scaled features"
+	    echo "Please check file <scaledfeaturelist> for scaled features"
 	    ;;
-	 5)
+         5)
+	    echo "Please enter the filename of scaled feature list(scaledfeaturelist):"
+	    read fileName1
+	    echo "Please enter the filename of target data(targetdata):"
+            read fileName2
+
+            ./featureselection.py -x $fileName1 -y $fileName2
+            echo "Please check file <featurelist> for final feature list"
+	    ;;
+	 6)
 	    echo "Please enter the filename of feature list(featurelist):"
             read fetList
             echo "Please enter the filename of target data(targetdata):"
@@ -67,7 +82,7 @@ case $option in
             ./split_train_test.py -x $fetList -y $tardata -z $splitper
             echo "Please check <trainlist>,<testlist>,and <targetDataToTrain> for output"
 	    ;;
-         6)
+         7)
 	    echo "Please enter the filename of feature list(trainlist):"
 	    read trainfile
             echo "Please enter the filename of targetdata(targetDataToTrain):"
@@ -75,7 +90,7 @@ case $option in
             ./train_ml.py -x $trainfile -y $trdata -o bin_file
             echo "Model has been deployed in bin_file" 
 	    ;;
-         7) 
+         8) 
 	    echo "Please enter the filename of test data(testlist):"
             read tlist
             ./test_ml.py -x $tlist -m bin_file

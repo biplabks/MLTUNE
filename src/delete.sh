@@ -2,6 +2,9 @@
 
 >outlist
 >bin_file
+rm eventlist
+rm normfeaturelist
+rm execlist
 rm featurelist
 rm trainlist
 rm testlist
