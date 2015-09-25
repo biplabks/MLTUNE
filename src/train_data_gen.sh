@@ -112,7 +112,13 @@ fi
 
 if [ "$user" = "automatic" ]; then
 #normalize outlist
-   ./normalize.py -x $outfile
+   ./normalize.py -x $outfile -y execlist
+
+#scale the normalized featurelist
+   ./scale.py -x normfeaturelist
+
+#feature selection
+   ./featureselection.py -x scaledfeaturelist -y targetdata
 
 #split featurelist(normalized outlist) to trainlist and testlist, and targetdata to targetDataToTrain(By default split is 70(train)-30(test))
    ./split_train_test.py -x featurelist -y targetdata -z 70
