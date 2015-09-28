@@ -1,5 +1,9 @@
 #! /bin/bash
 
+# check if MLTUNE is installed properly
+
+[ `which train_ml` ] || { echo "MLTUNE not installed. Exiting...."; exit 1;}
+
 echo "*****Welcome to MLTUNE tool*****"
 echo "WARNING: The wrong input may lead to error and wrong output"
 echo ""
