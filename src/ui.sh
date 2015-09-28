@@ -3,6 +3,7 @@
 # check if MLTUNE is installed properly
 
 [ `which train_ml` ] || { echo "MLTUNE not installed. Exiting...."; exit 1;}
+[ `which test_ml` ] || { echo "MLTUNE not installed. Exiting...."; exit 1;}
 
 echo "*****Welcome to MLTUNE tool*****"
 echo "WARNING: The wrong input may lead to error and wrong output"
@@ -91,13 +92,13 @@ case $option in
 	    read trainfile
             echo "Please enter the filename of targetdata(targetDataToTrain):"
 	    read trdata
-            ./train_ml.py -x $trainfile -y $trdata -o bin_file
+            train_ml -x $trainfile -y $trdata -o bin_file
             echo "Model has been deployed in bin_file" 
 	    ;;
          8) 
 	    echo "Please enter the filename of test data(testlist):"
             read tlist
-            ./test_ml.py -x $tlist -m bin_file
+            test_ml -x $tlist -m bin_file
             ;;
 	 *) echo "Invalid Choice!!";; 
       esac      
