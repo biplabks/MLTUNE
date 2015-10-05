@@ -16,6 +16,7 @@ def main():
     
     required.add_argument('-x', '--scaledfeaturelist', required=True, help='File containing feature values') 
     required.add_argument('-y', '--targetdata', required=True, help='File containiing target data')
+    required.add_argument('-z', '--fetpercentile', required=True, type=int, help='Percentile to select highest scoring percentage of features')
     
     args = parser.parse_args()
 
@@ -23,7 +24,7 @@ def main():
     Y = np.genfromtxt(args.targetdata,dtype='str')
     #sel = VarianceThreshold(threshold=(.8 * (1 - .8)))
     #result = sel.fit_transform(X)
-    result = SelectPercentile(f_classif, percentile=50).fit_transform(X,Y)
+    result = SelectPercentile(f_classif, percentile=args.fetpercentile).fit_transform(X,Y)
     
     np.savetxt('featurelist', result, fmt='%.2f', delimiter='\t')
 

@@ -1,4 +1,4 @@
-#! /bin/bash -x
+#! /bin/bash
 
 if [ $# -lt 2 ]; then
     echo "usage:"
@@ -28,8 +28,8 @@ do
       get_primary_power.sh $line >> power_data.txt
    elif [ $perfile == "energy" ]; then
       get_primary_energy.sh $line >> energy_data.txt
-   elif [ $perfile == "runtime" ]; then
-      get_primary_runtime.sh $line >> runtime_data.txt
+   elif [ $perfile == "exec" ]; then
+      get_primary_runtime.sh $line >> exec_data.txt
    fi
    #if [ $flag != "-l" ]; then
    #  read line
@@ -41,7 +41,7 @@ echo "Generating execution time for optimized program"
 while read line
 do
   read line
-  echo $line
+  #echo $line
   get_primary_runtime.sh $line >> execlist
 done < $progfile
 
@@ -72,7 +72,7 @@ do
  result=`echo "scale=2; $numerator/$denominator" | bc`
  resultavg=`echo "scale=2; $result+$resultavg" | bc`
  track=$((track+1))
- echo $track
+ #echo $track
  echo $result >> tasty.txt 
 done < $perfile"_data.txt"
 
@@ -80,8 +80,8 @@ average=`echo "scale=2; $resultavg/$track" | bc`
 percent=0.30
 goodup=`echo "scale=2; $average+($average*$percent)" | bc`
 
-echo "average : " $average
-echo "scaled average : " $goodup
+#echo "average : " $average
+#echo "scaled average : " $goodup
 
 
 echo "Creating training data for $perfile data"
@@ -89,7 +89,7 @@ goodlow=1.05
 if [ $(bc <<< "$goodup < $goodlow") -eq 1 ]; then
  goodup=$goodlow
 fi
-echo "good up : " $goodup
+#echo "good up : " $goodup
 top=$goodup
 neutralup=1.05
 neutrallow=0.95
@@ -168,7 +168,7 @@ csvVal=$trackcsv'p'
 while read line
 do
   trainres=$line
-  echo $trainres $average
+  #echo $trainres $average
   #if [ $line -gt $resultavg ]; then
   if [ $(bc <<< "$trainres > $average") -eq 1 ]; then 
     echo "good" >> avg_training_data.txt
