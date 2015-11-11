@@ -28,7 +28,8 @@ case $option in
       echo "Please check file <eventlist> for event lists"      
       
       #generate training data, normalize, scaling, split and train model
-      train_data_gen.sh eventlist outlist proglist -l $metric -c $clf -u automatic
+      automated.sh $metric $clf
+      #train_data_gen.sh eventlist outlist proglist -l $metric -c $clf -u automatic
 	;;
    2)
       echo "Please choose from following options. "
@@ -54,7 +55,7 @@ case $option in
             read metric
             echo "Please enter classification(bin/mult):"
             read clf
-            train_data_gen.sh eventlist outlist proglist -l $metric -c $clf -u manual
+            train_data_gen.sh eventlist outlist proglist -l $metric -c $clf
 	    echo "Please check file <targetdata> for classified target data"
 	    ;;
          3)
@@ -76,7 +77,7 @@ case $option in
 	    read fileName1
 	    echo "Please enter the filename of target data(targetdata):"
             read fileName2
-            echo "Please enter the percentage to select highest features:"
+            echo "Please enter the percentage to select highest features(0-100):"
             read fetpercent
 
             featureselection.py -x $fileName1 -y $fileName2 -z $fetpercent
@@ -87,27 +88,47 @@ case $option in
             read fetList
             echo "Please enter the filename of target data(targetdata):"
             read tardata
-            echo "Please enter the split percentage:"
+            echo "Please enter the split percentage(0-1):"
             read splitper
             split_train_test.py -x $fetList -y $tardata -z $splitper
             echo "Please check <trainlist>,<testlist>,and <targetDataToTrain> for splitted information"
 	    ;;
          7)
-	    echo "Please enter the filename of feature list(trainlist):"
+	    echo "Please enter the filename of feature list(trainlist/featurelist):"
 	    read trainfile
-            echo "Please enter the filename of targetdata(targetDataToTrain):"
+            echo "Please enter the filename of targetdata(targetDataToTrain/targetdata):"
 	    read trdata
-            train_ml.py -x $trainfile -y $trdata -o bin_file
-            echo "Model has been deployed in bin_file" 
+            #train_ml.py -x $trainfile -y $trdata -o bin_file
+            train_ml.py -x $trainfile -y $trdata
+            echo "Model has been deployed in bin_file_*" 
 	    ;;
          8) 
 	    echo "Please enter the filename of test data(testlist):"
             read tlist
-            test_ml.py -x $tlist -m bin_file
+            echo "Please choose which model you want to test:"
+            echo "1. Logistic Regression"
+            echo "2. SVM"
+            echo "3. Naive Bayes"
+            echo "4. Decision Trees"
+            read modelOption
+            case $modelOption in
+            1)
+              test_ml.py -x $tlist -m bin_file_lr 
+              ;;
+            2)
+              test_ml.py -x $tlist -m bin_file_svm
+              ;;
+            3)
+              test_ml.py -x $tlist -m bin_file_bayes
+              ;;
+            4)
+              test_ml.py -x $tlist -m bin_file_dtree
+              ;;
+            *) echo "Invalid choice!!";;
+            esac
             ;;
 	 *) echo "Invalid Choice!!";; 
       esac      
-
 	;; 
    3) 
       echo "Thanks for using MLTUNE"

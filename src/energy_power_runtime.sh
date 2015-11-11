@@ -1,6 +1,6 @@
 #! /bin/bash
 
-if [ $# -lt 2 ]; then
+if [ $# -lt 3 ]; then
     echo "usage:"
     echo "    $0 metric progfile classification"
     exit
@@ -84,7 +84,7 @@ goodup=`echo "scale=2; $average+($average*$percent)" | bc`
 #echo "scaled average : " $goodup
 
 
-echo "Creating training data for $perfile data"
+echo "Creating target data for $perfile data"
 goodlow=1.05
 if [ $(bc <<< "$goodup < $goodlow") -eq 1 ]; then
  goodup=$goodlow

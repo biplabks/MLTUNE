@@ -1,7 +1,14 @@
 #!/bin/bash
 
->outlist
->bin_file
+#>outlist
+#>bin_file
+rm outlist
+rm bin_file
+rm bin_file_*
+rm targetDataTestPart
+rm X
+rm Y
+rm scaledfeaturelist
 rm eventlist
 rm normfeaturelist
 rm execlist
@@ -20,6 +27,7 @@ rm tasty.txt
 rm energy_training_data.txt
 rm power_training_data.txt
 rm exec_training_data.txt
+rm mult_training_data.txt
 rm energy_training_data.csv
 rm power_training_data.csv
 rm exec_training_data.csv

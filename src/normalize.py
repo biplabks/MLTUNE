@@ -21,14 +21,19 @@ def main():
     
     args = parser.parse_args()
 
-    X = np.loadtxt(args.outlist, skiprows=1)
+    #X = np.loadtxt(args.outlist, skiprows=1)
+    np.set_printoptions(precision=2)
+    X = np.genfromtxt(args.outlist, skiprows=1)
+    X=np.nan_to_num(X)
     Y = np.loadtxt(args.execlist, ndmin=2)
 
     #f = open("trainlist","wb")
-    newResult = X/Y
+    #newResult = X/Y
     sel = VarianceThreshold(threshold=(.8*(1-.8)))
-    result = sel.fit_transform(newResult)
-    np.savetxt('normfeaturelist', result, fmt='%.2f', delimiter='\t')
+    result1 = sel.fit_transform(X)
+    newResult = result1/Y
+    result2 = sel.fit_transform(newResult)
+    np.savetxt('normfeaturelist', result2, fmt='%.2f', delimiter='\t')
     #f.close()
 
 if __name__ == "__main__":
