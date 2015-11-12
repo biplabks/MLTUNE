@@ -1,6 +1,6 @@
 #! /bin/bash
 
-likwid-perfctr -e | grep ", PMC" | awk -F ',' '{print $1}' >> eventlist
+likwid-perfctr -e | grep ", PMC" | awk -F ',' '{print $1}' > eventlist
 #likwid-perfctr -e | grep "," | awk -F ',' '{print $1}' >> raweventlist
 
 #filter event list
