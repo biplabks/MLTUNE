@@ -37,13 +37,13 @@ while [ $# -gt 3 ]; do
             shift # option has parameter
             ;;
         --)
-	    prog="$5"
-            shift
-	    shift
-	    args=$@
-	    break
+				prog="$5"
+        shift
+				shift
+				args=$@
+				break
 	    ;;
-         *)
+      *)
 	    # unknown option
 	    echo Unknown option: $key
  	    exit 0
