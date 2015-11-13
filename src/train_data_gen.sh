@@ -13,6 +13,7 @@ function usage() {
                                      default is bin"
     echo -e "   -o, --outfile FILE\t  name of output file; default is METRIC_train_data.csv"
     echo -e "   -p, --processor PROC\t  PROC can be cpu or gpu; default is cpu"
+    echo -e "   -n, --models NUM\t  number of ML models; default is 1"
 }
 
 MINARGS=2
@@ -40,6 +41,10 @@ while [ $# -gt 0 ]; do
 			proc="$2"
       shift # option has parameter
       ;;
+    -n|--models)
+			models="$2"
+      shift # option has parameter
+      ;;
     *)
 			if [ "$eventfile" = "" ]; then
 				eventfile=$1
@@ -59,6 +64,7 @@ done
 [ "$outfile" ] || { outfile=${metric}_train_data.csv; }
 [ "$classification" ] || { classification=bin; }
 [ "$proc" ] || { proc=cpu; }
+[ "$models" ] || { models=1; }
 
 # check input files 
 [ -r "$eventfile" ] || { echo "could not read feature list file. exiting ..."; exit 0; }
@@ -84,7 +90,6 @@ done < $eventfile
 printf "\n" >> $outfile
 
 # conversion of events in eventfile to hexcodes
-#rm -f temp_hex_codes
 get_hex_codes_from_names $eventfile > temp_hex_codes
 
 # read each line of prog and prog_args
@@ -101,15 +106,20 @@ do
 	else 
 		perf_counter $outfile temp_hex_codes $exec   
 	fi
-	# skipping next line; want to get features baseline only
+	# skipping next line; want to get for features baseline only
   if [ "$metric" = "power" ] || [ "$metric" = "energy" ] || [ "$metric" = "exec" ]; then
-    read line
+		m=0
+		while [ $m -lt $models ]; do
+			read line
+			m=$(($m+1))
+		done
   fi
 done < $progfile
 
-if [ "$classification" = "bin" ] || [ "$classification" = "mult" ]; then
-   energy_power_runtime.sh -p ${proc} -m $metric -c $classification $progfile 
-fi 
-
 # cleanup
 rm -f temp_hex_codes
+
+if [ "$classification" = "bin" ] || [ "$classification" = "mult" ]; then
+   energy_power_runtime.sh -n $models -p ${proc} -m $metric -c $classification $progfile 
+fi 
+

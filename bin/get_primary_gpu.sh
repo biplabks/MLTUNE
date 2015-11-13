@@ -1,0 +1,1 @@
+../src/get_primary_gpu.sh

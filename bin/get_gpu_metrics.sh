@@ -1,0 +1,1 @@
+../src/get_gpu_metrics.sh
