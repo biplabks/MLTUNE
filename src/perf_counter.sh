@@ -51,7 +51,7 @@ do
 	#fi
 	if [ $r != "++" ] && [ $r != "+" ]; then
 	    printf "${r}\t" >> $outfile
-            printf "${r}," >> forcsv.txt
+      printf "${r}," >> forcsv.txt
 	fi
     done    
 done < $counterfile
