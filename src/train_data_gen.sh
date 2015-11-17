@@ -99,8 +99,11 @@ do
 	exec=`echo $line | awk -F ";;" '{print $2}'`
 
 	if [ $proc = "gpu" ]; then
+		$build
 		echo $exec > gpu_proglist
 		fts=`get_gpu_metrics.sh -i $eventfile -t gpu_proglist` 
+
+		# TODO: add a check to see if all metrics were measured. Handle mismatches accordingly
 		echo $fts | awk '{ for (i = 1; i <= NF; i++) printf "%3.5f,",$i; printf "\n"}' >> forcsv.txt
 		rm -rf gpu_proglist
 	else 

@@ -63,7 +63,7 @@ do
 		# gpu proglist has kernel name and execute command 
 		kernel=`echo $exec | awk '{print $1}'`
 		exec=`echo $exec | awk '{ for (i = 2; i <= NF; i++) print $i}'`
-
+		$build
 		if [ $metric = "power" ]; then
       get_primary_gpu.sh -m pwr -k ${kernel} -- $exec >> ${outfile}
 		elif [ $metric = "energy" ]; then
@@ -197,7 +197,6 @@ done < $metric"_data.txt"
 
 m=0
 while [ $m -lt $models ]; do
-
 	trackcsv=1
 	csvVal=$trackcsv'p'
 	while read line

@@ -124,11 +124,11 @@ if [ ! ${gen_metrics_file} ]; then
         if [ $i -eq 4 ]; then
             i=0
             if [ ${kernels[0]} = "none" ]; then
-                nvprof --print-gpu-trace --metrics ${metrics[0]},${metrics[1]},${metrics[2]},${metrics[3]} --devices 0 --csv\
-                     ./${progs[0]} ${prog_args[0]}   2>&1 | grep "Tesla" | head -1 > tmp
+                (nvprof --print-gpu-trace --metrics ${metrics[0]},${metrics[1]},${metrics[2]},${metrics[3]} --devices 0 --csv\
+                     ${progs[0]} ${prog_args[0]}  > ${progs[0]}.out)  2>&1 | grep "Tesla" | head -1 > tmp
             else
-                nvprof --print-gpu-trace --metrics ${metrics[0]},${metrics[1]},${metrics[2]},${metrics[3]} --devices 0 --csv\
-                     ./${progs[0]} ${prog_args[0]}   2>&1 | grep "Tesla" | grep "${kernels[0]}" | head -1 > tmp
+                (nvprof --print-gpu-trace --metrics ${metrics[0]},${metrics[1]},${metrics[2]},${metrics[3]} --devices 0 --csv\
+                     ${progs[0]} ${prog_args[0]} > ${progs[0]}.out)  2>&1 | grep "Tesla" | grep "${kernels[0]}" | head -1 > tmp
             fi
             
             vals=`cat tmp | awk -F "," '{ first = NF-3; second = NF-2; third = NF-1; printf $first " "  $second " " $third " " $NF }'`
@@ -159,15 +159,15 @@ if [ ! ${gen_metrics_file} ]; then
     j=0
     while [ $j -lt $i ]; do
         if [ ${kernels[0]} = "none" ]; then
-            nvprof  --print-gpu-trace --metrics ${metrics[$j]} --devices 0 --csv \
-                 ${progs[0]} ${prog_args[0]}  2>&1 |  grep "Tesla" | head -1 > tmp 
+            (nvprof  --print-gpu-trace --metrics ${metrics[$j]} --devices 0 --csv \
+                 ${progs[0]} ${prog_args[0]} > ${progs[0]}.out) 2>&1 |  grep "Tesla" | head -1 > tmp 
         else
-            nvprof  --print-gpu-trace --metrics ${metrics[$j]} --devices 0 --csv \
-                 ${progs[0]} ${prog_args[0]}  2>&1 |  grep "Tesla" | grep "${kernels[0]}" | head -1 > tmp 
+            (nvprof  --print-gpu-trace --metrics ${metrics[$j]} --devices 0 --csv \
+                 ${progs[0]} ${prog_args[0]} > ${progs[0]}.out)  2>&1 |  grep "Tesla" | grep "${kernels[0]}" | head -1 > tmp 
         fi
             
         val=`cat tmp | awk -F "," '{ print $NF }'`
-        if [ $val != "\"<OVERFLOW>\"" ] && [ $val != "\"<INVALID>\"" ]; then
+        if [ "$val" != "\"<OVERFLOW>\"" ] && [ "$val" != "\"<INVALID>\"" ]; then
             echo ${metrics[$j]} >> ${measured_metrics}
             echo $val >> ${outfile_vals_only}
         fi
