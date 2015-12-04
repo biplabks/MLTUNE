@@ -29,7 +29,8 @@ def main():
 
     #f = open("trainlist","wb")
     #newResult = X/Y
-    sel = VarianceThreshold(threshold=(.8*(1-.8)))
+    #sel = VarianceThreshold(threshold=(.8*(1-.8)))
+    sel = VarianceThreshold()
     result1 = sel.fit_transform(X)
     newResult = result1/Y
     result2 = sel.fit_transform(newResult)

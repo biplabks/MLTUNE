@@ -1,4 +1,4 @@
-#! /bin/bash
+#! /bin/bash -x
 
 if [ $# -lt 3 ]; then
     echo "usage:"
@@ -65,6 +65,7 @@ do
 		exec=`echo $exec | awk '{ for (i = 2; i <= NF; i++) print $i}'`
 		$build
 		if [ $metric = "power" ]; then
+      echo "biplab" ${kernel}          
       get_primary_gpu.sh -m pwr -k ${kernel} -- $exec >> ${outfile}
 		elif [ $metric = "energy" ]; then
       get_primary_gpu.sh -m energy -k ${kernel} -- $exec >> ${outifle}

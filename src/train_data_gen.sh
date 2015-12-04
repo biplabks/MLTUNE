@@ -1,4 +1,4 @@
-#! /bin/bash
+#! /bin/bash -x
 
 function usage() {
     echo "usage: train_data_gen.sh [OPTIONS] FEATURE_LIST PROG_LIST"
@@ -118,7 +118,7 @@ do
 		done
   fi
 done < $progfile
-
+echo "I am here"
 # cleanup
 rm -f temp_hex_codes
 
