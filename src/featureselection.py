@@ -22,11 +22,24 @@ def main():
 
     X = np.loadtxt(args.scaledfeaturelist) 
     Y = np.genfromtxt(args.targetdata,dtype='str')
-    #sel = VarianceThreshold(threshold=(.8 * (1 - .8)))
-    #result = sel.fit_transform(X)
-    result = SelectPercentile(f_classif, percentile=args.fetpercentile).fit_transform(X,Y)
+   
+    #result = SelectPercentile(f_classif, percentile=args.fetpercentile).fit_transform(X,Y)
+    sel = SelectPercentile(f_classif, percentile=args.fetpercentile)
+    result = sel.fit_transform(X,Y)
     
-    np.savetxt('featurelist', result, fmt='%.2f', delimiter='\t')
+    #selecting features for test programs
+    if os.path.isfile('variancefeatures.txt'):
+        varianceFeature = np.genfromtxt("variancefeatures.txt", dtype='str')
+        featureFromSelectPercentile = sel.get_support(indices=True)
+        featureFileforSelectPercentile = open("featuresToTestPrograms","w")
+        for i in featureFromSelectPercentile:
+            featureFileforSelectPercentile.write(varianceFeature[i])
+            featureFileforSelectPercentile.write("\n")
+        featureFileforSelectPercentile.close()   
+    #remove the variancefeatures as we don't need it anymore
+    rm variancefeatures.txt
 
+    np.savetxt('featurelist', result, fmt='%.2f', delimiter='\t')
+    
 if __name__ == "__main__":
     main()
