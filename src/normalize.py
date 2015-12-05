@@ -7,6 +7,7 @@ from sklearn.feature_selection import VarianceThreshold
 import pickle
 
 import sys
+import os
 import argparse
 
 def usage():
@@ -30,11 +31,22 @@ def main():
     #f = open("trainlist","wb")
     #newResult = X/Y
     #sel = VarianceThreshold(threshold=(.8*(1-.8)))
-    sel = VarianceThreshold()
+    sel = VarianceThreshold(threshold=(.8*(1-.8)))
     result1 = sel.fit_transform(X)
     newResult = result1/Y
-    result2 = sel.fit_transform(newResult)
-    np.savetxt('normfeaturelist', result2, fmt='%.2f', delimiter='\t')
+    #result2 = sel.fit_transform(newResult)
+
+    #feature collection for test programs
+    if os.path.isfile('eventlist'):
+       features = np.genfromtxt('eventlist',dtype='str')
+       featureFromVariance = sel.get_support(indices=True)
+       text_file = open("variancefeatures.txt","w")
+       for i in featureFromVariance:
+           text_file.write(features[i])
+           text_file.write("\n")
+       text_file.close()
+
+    np.savetxt('normfeaturelist', newResult, fmt='%.2f', delimiter='\t')
     #f.close()
 
 if __name__ == "__main__":
