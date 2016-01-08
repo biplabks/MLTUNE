@@ -29,7 +29,7 @@ while [ $# -gt 0 ]; do
   key="$1"
   case $key in
     -i|--input)
-      metrics_file="$2"
+      fts_file="$2"
       shift # option has parameter
       ;;
     -t|--trim)
@@ -53,7 +53,7 @@ while [ $# -gt 0 ]; do
 done
 
 if [ $DEBUG ]; then 
-  echo ${metrics_file}
+  echo ${fts_file}
   echo $outpath
   echo ${trim}
   echo $proglist
@@ -70,11 +70,11 @@ fi
 
 [ -r ${proglist} ] || { echo "Could not open proglist file: ${proglist}. Exiting"; exit 0;}
 
-CUDATUNE_HOME=$HOME/cudatuner
+CUDATUNE_HOME=$HOME/code/cudatuner
 
 
-[ `which nvprof` ] || { echo "could not find nvprof in path. Exiting..."; exit 1; }
-[ `which deviceQuery` ] || { echo "could not find deviceQuery. Exiting..."; exit 1; }
+[ `which nvprof` ] || { echo "Could not find nvprof in path. Exiting..."; exit 1; }
+[ `which deviceQuery` ] || { echo "Could not find deviceQuery. Exiting..."; exit 1; }
 
 HOST=`hostname`
 DEVICE=`deviceQuery | grep "Device 0:" | awk '{print $4}' | sed 's/"//'`
@@ -82,11 +82,11 @@ DEVICE=`deviceQuery | grep "Device 0:" | awk '{print $4}' | sed 's/"//'`
 
 # if user didn't supply metrics file then measure all available 
 
-if [ "${metrics_file}" = "" ]; then 
-  metrics_file=$CUDATUNE_HOME/info/metrics_${DEVICE}_${HOST}.txt
-  [ -r ${metrics_file} ] || { echo "No system metrics file found, generating new one."; gen_metrics_file="true";}
+if [ "${fts_file}" = "" ]; then 
+  fts_file=$CUDATUNE_HOME/info/metrics_${DEVICE}_${HOST}.txt
+  [ -r ${fts_file} ] || { echo "No system metrics file found, generating new one."; gen_fts_file="true";}
 else
-  [ -r ${metrics_file} ] || { echo "Could not open metrics file: ${metrics_file}. Exiting"; exit 0;}
+  [ -r ${fts_file} ] || { echo "Could not open metrics file: ${fts_file}. Exiting"; exit 0;}
 fi
 
 # read prog list : <kernel> <prog> <prog args>
@@ -99,8 +99,14 @@ while IFS='' read -r line || [[ -n $line ]]; do
   i=$(($i+1))
 done <  ${proglist}
 
+j=0
+while [ $j -lt $i ]; do
+	[ -x ${progs[$j]} ] || { echo "Cannot execute prog: ${progs[$j]}. Exiting"; exit 0;}
+  j=$(($j+1))
+done
+
 if [ $DEBUG ]; then 
-  j=0
+	j=0
   while [ $j -lt $i ]; do
     echo -e ${progs[$j]} "\t" ${prog_args[$j]}
     j=$(($j+1))
@@ -114,7 +120,7 @@ measured_metrics=${prognames[0]}_metrics_names.txt
 rm -rf ${outfile} ${outfile_vals_only} ${measured_metrics}
 
 
-if [ ! ${gen_metrics_file} ]; then
+if [ ! ${gen_fts_file} ]; then
     
     i=0
     while IFS='' read -r line || [[ -n $line ]]; do
@@ -154,7 +160,7 @@ if [ ! ${gen_metrics_file} ]; then
             cat tmp >> ${outfile}
             rm -rf tmp
         fi
-    done <  ${metrics_file}
+    done <  ${fts_file}
 
     j=0
     while [ $j -lt $i ]; do
@@ -163,7 +169,7 @@ if [ ! ${gen_metrics_file} ]; then
                  ${progs[0]} ${prog_args[0]} > ${progs[0]}.out) 2>&1 |  grep "Tesla" | head -1 > tmp 
         else
             (nvprof  --print-gpu-trace --metrics ${metrics[$j]} --devices 0 --csv \
-                 ${progs[0]} ${prog_args[0]} > ${progs[0]}.out)  2>&1 |  grep "Tesla" | grep "${kernels[0]}" | head -1 > tmp 
+                 ${progs[0]} ${prog_args[0]} > ${progs[0]}.out)  2>&1 |  grep "Tesla"  | grep "${kernels[0]}" | head -1 > tmp 
         fi
             
         val=`cat tmp | awk -F "," '{ print $NF }'`
@@ -179,7 +185,7 @@ if [ ! ${gen_metrics_file} ]; then
     done    
 else 
     nvprof --query-metrics --devices 0 | grep ":" | awk -F ":" '{print $1}' | awk '{print $1}' \
-                                       |  grep -v -E "Available|Device" > ${metrics_file}
+                                       |  grep -v -E "Available|Device" > ${fts_file}
 fi
 
 
