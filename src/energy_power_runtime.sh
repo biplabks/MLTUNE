@@ -56,8 +56,9 @@ echo "Performing $metric data collection"
 outfile=$metric"_data.txt"
 while read line
 do
-	build=`echo $line | awk -F ";;" '{print $1}'`
-	exec=`echo $line | awk -F ";;" '{print $2}'`
+	meta=`echo $line | awk -F ";;" '{print $1}'`
+	build=`echo $line | awk -F ";;" '{print $2}'`
+	exec=`echo $line | awk -F ";;" '{print $3}'`
 
 	if [ $proc = "gpu" ]; then
 		# gpu proglist has kernel name and execute command 
@@ -66,12 +67,13 @@ do
 		$build
 		if [ $metric = "power" ]; then
       echo "biplab" ${kernel}          
-      get_primary_gpu.sh -m pwr -k ${kernel} -- $exec >> ${outfile}
+      res=`get_primary_gpu.sh -m pwr -k ${kernel} -- $exec`
 		elif [ $metric = "energy" ]; then
-      get_primary_gpu.sh -m energy -k ${kernel} -- $exec >> ${outifle}
+      res=`get_primary_gpu.sh -m energy -k ${kernel} -- $exec`
 		elif [ $metric = "exec" ]; then
-      get_primary_gpu.sh -m time -k ${kernel} -- $exec >> ${outfile}
+      res=`get_primary_gpu.sh -m time -k ${kernel} -- $exec`
 		fi
+		echo $meta $res >> ${outfile}
 	else
 		if [ $metric == "power" ]; then
       get_primary_power.sh $exec >> ${outfile} 
@@ -107,22 +109,40 @@ echo "Calculating average for $metric data"
 
 resultavg=0
 track=0
-while read line; do
-	numerator=$line
-	m=0
-	while [ $m -lt $models ]; do
-		read line
-		denominator=$line
-		# compute speedup/power/energy gain 
-		result=`echo "scale=2; $numerator/$denominator" | bc`
-		echo $result >> ${m}_speedups.txt 
+numerator=0
 
-		# running total of all speedups, for averaging later (used in picking labels)
+rm -rf *_speedups.txt
+while read line; do
+	meta=`echo $line | awk '{print $1}'`
+	if [ "${meta}" = "" ]; then 
+		echo "train_data_gen.sh : proglist file not formatted correctly. Exiting"
+		exit 0
+	fi
+
+	if [ ${meta} = "+" ]; then 
+		numerator=`echo $line | awk '{print $2}'`
+	else 
+		denominator=`echo $line | awk '{print $2}'`
+		result=`echo "scale=2; $numerator/$denominator" | bc`
+		echo $result >> ${meta}_speedups.txt 
 		resultavg=`echo "scale=2; $result+$resultavg" | bc`
 		track=$((track+1))
-		m=$(($m+1))
-	done
-done < $metric"_data.txt"
+	fi
+done < ${outfile} 
+#	numerator=$line
+	# m=0
+	# while [ $m -lt $models ]; do
+	# 	read line
+	# 	denominator=$line
+	# 	# compute speedup/power/energy gain 
+	# 	result=`echo "scale=2; $numerator/$denominator" | bc`
+	# 	echo $result >> ${m}_speedups.txt 
+
+	# 	# running total of all speedups, for averaging later (used in picking labels)
+	# 	resultavg=`echo "scale=2; $result+$resultavg" | bc`
+	# 	track=$((track+1))
+	# 	m=$(($m+1))
+	# done
 
 average=`echo "scale=2; $resultavg/$track" | bc`
 goodup=`echo "scale=2; $average+($average*$PCT)" | bc`
@@ -148,11 +168,22 @@ trackcsv=1
 csvVal=$trackcsv'p'
 while read line
 do
-	numerator=$line
-	m=0
-	while [ $m -lt $models ]; do
-		read line
-		denominator=$line
+	meta=`echo $line | awk '{print $1}'`
+	if [ "${meta}" = "" ]; then 
+		echo "train_data_gen.sh : proglist file not formatted correctly. Exiting"
+		exit 0
+	fi
+
+	if [ ${meta} = "+" ]; then 
+		numerator=`echo $line | awk '{print $2}'`
+	else 
+		denominator=`echo $line | awk '{print $2}'`
+
+#	numerator=$line
+#	m=0
+#	while [ $m -lt $models ]; do
+#		read line
+#		denominator=$line
 
 		# compute speedup/power/energy gain 
 		result=`echo "scale=2; $numerator/$denominator" | bc`
@@ -189,15 +220,19 @@ do
 				trainVal=bad
 			fi
 		fi
-		echo `sed -n $csvVal forcsv.txt`$trainVal >> ${m}_${metric}"_training_data.csv"
-		m=$(($m+1))
-	done
+		echo `sed -n $csvVal forcsv.txt`$trainVal >> ${meta}_${metric}"_training_data.csv"
+
+#		m=$(($m+1))
+	fi
+#	done
 	trackcsv=$((trackcsv+1))
 	csvVal=$trackcsv'p'
-done < $metric"_data.txt"
+done < ${outfile}
 
-m=0
-while [ $m -lt $models ]; do
+#m=0
+#while [ $m -lt $models ]; do
+for resfile in `ls *_speedups.txt`; do
+	model=`echo $resfile | awk -F "_" '{print $1}'`
 	trackcsv=1
 	csvVal=$trackcsv'p'
 	while read line
@@ -210,12 +245,10 @@ while [ $m -lt $models ]; do
 			echo "bad" >> avg_training_data.txt
 			trainVal=bad
 		fi
-		echo `sed -n $csvVal forcsv.txt`$trainVal >> ${m}_avg_training_data.csv
+		echo `sed -n $csvVal forcsv.txt`$trainVal >> ${model}_avg_training_data.csv
 		trackcsv=$((trackcsv+1))
 		csvVal=$trackcsv'p'
-	done < ${m}_speedups.txt
-	m=$(($m+1))
-	
+	done < $resfile
 done
 
 # clean up 

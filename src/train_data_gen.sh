@@ -95,27 +95,27 @@ get_hex_codes_from_names $eventfile > temp_hex_codes
 # read each line of prog and prog_args
 while read line
 do
-	build=`echo $line | awk -F ";;" '{print $1}'`
-	exec=`echo $line | awk -F ";;" '{print $2}'`
+	meta=`echo $line | awk -F ";;" '{print $1}'`
+	build=`echo $line | awk -F ";;" '{print $2}'`
+	exec=`echo $line | awk -F ";;" '{print $3}'`
 
-	if [ $proc = "gpu" ]; then
-		$build
-		echo $exec > gpu_proglist
-		fts=`get_gpu_metrics.sh -i $eventfile -t gpu_proglist` 
-
-		# TODO: add a check to see if all metrics were measured. Handle mismatches accordingly
-		echo $fts | awk '{ for (i = 1; i <= NF; i++) printf "%3.5f,",$i; printf "\n"}' >> forcsv.txt
-		rm -rf gpu_proglist
-	else 
-		perf_counter $outfile temp_hex_codes $exec   
+	if [ "${meta}" = "" ]; then 
+		echo "train_data_gen.sh : proglist file not formatted correctly. Exiting"
+		exit 0
 	fi
-	# skipping next line; want to get for features baseline only
-  if [ "$metric" = "power" ] || [ "$metric" = "energy" ] || [ "$metric" = "exec" ]; then
-		m=0
-		while [ $m -lt $models ]; do
-			read line
-			m=$(($m+1))
-		done
+	if [ ${meta} = "+" ]; then 
+		echo $meta
+		if [ $proc = "gpu" ]; then
+			# $build
+			# echo $exec > gpu_proglist
+			# fts=`get_gpu_metrics.sh -i $eventfile -t gpu_proglist` 
+			
+  		# # TODO: add a check to see if all metrics were measured. Handle mismatches accordingly
+			# echo $fts | awk '{ for (i = 1; i <= NF; i++) printf "%3.5f,",$i; printf "\n"}' >> forcsv.txt
+			rm -rf gpu_proglist
+		else 
+			perf_counter $outfile temp_hex_codes $exec   
+		fi
   fi
 done < $progfile
 
@@ -123,6 +123,6 @@ done < $progfile
 rm -f temp_hex_codes
 
 if [ "$classification" = "bin" ] || [ "$classification" = "mult" ]; then
-   energy_power_runtime.sh -n $models -p ${proc} -m $metric -c $classification $progfile 
+  energy_power_runtime.sh -n $models -p ${proc} -m $metric -c $classification $progfile 
 fi 
 

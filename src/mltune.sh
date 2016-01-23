@@ -99,7 +99,8 @@ case $option in
             echo "Please enter the filename of targetdata(targetDataToTrain/targetdata):"
 	    read trdata
             #train_ml.py -x $trainfile -y $trdata -o bin_file
-            train_ml.py -x $trainfile -y $trdata
+#            train_ml.py -x $trainfile -y $trdata
+            train_ml -x $trainfile -y $trdata
             echo "Model has been deployed in bin_file_*" 
 	    ;;
          8) 
