@@ -164,7 +164,7 @@ neutralup=1.05
 neutrallow=0.95
 bad=0.95
 
-trackcsv=1
+trackcsv=0
 csvVal=$trackcsv'p'
 while read line
 do
@@ -176,6 +176,8 @@ do
 
 	if [ ${meta} = "+" ]; then 
 		numerator=`echo $line | awk '{print $2}'`
+		trackcsv=$((trackcsv+1))
+		csvVal=$trackcsv'p'
 	else 
 		denominator=`echo $line | awk '{print $2}'`
 
@@ -220,13 +222,11 @@ do
 				trainVal=bad
 			fi
 		fi
+		echo $csvVal
 		echo `sed -n $csvVal forcsv.txt`$trainVal >> ${meta}_${metric}"_training_data.csv"
-
 #		m=$(($m+1))
 	fi
 #	done
-	trackcsv=$((trackcsv+1))
-	csvVal=$trackcsv'p'
 done < ${outfile}
 
 #m=0
@@ -246,10 +246,11 @@ for resfile in `ls *_speedups.txt`; do
 			trainVal=bad
 		fi
 		echo `sed -n $csvVal forcsv.txt`$trainVal >> ${model}_avg_training_data.csv
+		echo $csvVal
 		trackcsv=$((trackcsv+1))
 		csvVal=$trackcsv'p'
 	done < $resfile
 done
 
 # clean up 
-rm -rf forcsv.txt *_speedups.txt avg_training_data.txt targetdata execlist ${metric}_*.txt 
+rm -rf forcsv.txt *_speedups.txt avg_training_data.txt targetdata execlist  ${metric}_*.txt 
