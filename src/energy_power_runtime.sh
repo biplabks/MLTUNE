@@ -25,10 +25,6 @@ while [ $# -gt 0 ]; do
 			proc="$2"
       shift # option has parameter
       ;;
-    -n|--models)
-			models="$2"
-      shift # option has parameter
-      ;;
     *)
 			if  [ "$progfile" = "" ]; then 
 				progfile=$1
@@ -46,7 +42,6 @@ done
 [ "$classification" ] || { classification=bin; }
 [ "$outfile" ] || { outfile=${metric}_train_data.csv; }
 [ "$proc" ] || { proc=cpu; }
-[ "$models" ] || { models=1; }
 
 
 # threshold values for multi classification 
@@ -181,12 +176,6 @@ do
 	else 
 		denominator=`echo $line | awk '{print $2}'`
 
-#	numerator=$line
-#	m=0
-#	while [ $m -lt $models ]; do
-#		read line
-#		denominator=$line
-
 		# compute speedup/power/energy gain 
 		result=`echo "scale=2; $numerator/$denominator" | bc`
 
@@ -224,13 +213,9 @@ do
 		fi
 		echo $csvVal
 		echo `sed -n $csvVal forcsv.txt`$trainVal >> ${meta}_${metric}"_training_data.csv"
-#		m=$(($m+1))
 	fi
-#	done
 done < ${outfile}
 
-#m=0
-#while [ $m -lt $models ]; do
 for resfile in `ls *_speedups.txt`; do
 	model=`echo $resfile | awk -F "_" '{print $1}'`
 	trackcsv=1

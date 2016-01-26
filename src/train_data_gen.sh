@@ -13,7 +13,6 @@ function usage() {
                                      default is bin"
     echo -e "   -o, --outfile FILE\t  name of output file; default is METRIC_train_data.csv"
     echo -e "   -p, --processor PROC\t  PROC can be cpu or gpu; default is cpu"
-    echo -e "   -n, --models NUM\t  number of ML models; default is 1"
     echo -e "   -s, --source, collect source code features"
 }
 
@@ -42,10 +41,6 @@ while [ $# -gt 0 ]; do
 			proc="$2"
       shift # option has parameter
       ;;
-    -n|--models)
-			models="$2"
-      shift # option has parameter
-      ;;
     -s|--source)
 			src=1
       ;;
@@ -68,7 +63,6 @@ done
 [ "$outfile" ] || { outfile=${metric}_train_data.csv; }
 [ "$classification" ] || { classification=bin; }
 [ "$proc" ] || { proc=cpu; }
-[ "$models" ] || { models=1; }
 [ "$src" ] || { src=0; }
 
 # check input files 
@@ -119,9 +113,8 @@ do
 					prog=`echo $build | awk '{print $NF}'`				
 				fi
 			  res=`parboil_gen_variant.sh -s -l 0`				
-				res=`echo $res | awk '{ for (i = 1; i <= NF; i++) printf "%3.0f,",$i;}'`
 			fi
-			fts=$res$fts
+			fts=$res" "$fts
 			
   		# TODO: add a check to see if all metrics were measured. Handle mismatches accordingly
 			echo $fts | awk '{ for (i = 1; i <= NF; i++) printf "%3.5f,",$i; printf "\n"}' >> forcsv.txt
@@ -132,10 +125,10 @@ do
   fi
 done < $progfile
 
-# cleanup
+# cleanup tmp files 
 rm -f temp_hex_codes
 
 if [ "$classification" = "bin" ] || [ "$classification" = "mult" ]; then
-  energy_power_runtime.sh -n $models -p ${proc} -m $metric -c $classification $progfile 
+  energy_power_runtime.sh -n 1 -p ${proc} -m $metric -c $classification $progfile 
 fi 
 
