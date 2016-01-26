@@ -14,6 +14,7 @@ function usage() {
     echo -e "   -o, --outfile FILE\t  name of output file; default is METRIC_train_data.csv"
     echo -e "   -p, --processor PROC\t  PROC can be cpu or gpu; default is cpu"
     echo -e "   -n, --models NUM\t  number of ML models; default is 1"
+    echo -e "   -s, --source, collect source code features"
 }
 
 MINARGS=2
@@ -45,6 +46,9 @@ while [ $# -gt 0 ]; do
 			models="$2"
       shift # option has parameter
       ;;
+    -s|--source)
+			src=1
+      ;;
     *)
 			if [ "$eventfile" = "" ]; then
 				eventfile=$1
@@ -65,6 +69,7 @@ done
 [ "$classification" ] || { classification=bin; }
 [ "$proc" ] || { proc=cpu; }
 [ "$models" ] || { models=1; }
+[ "$src" ] || { src=0; }
 
 # check input files 
 [ -r "$eventfile" ] || { echo "could not read feature list file. exiting ..."; exit 0; }
@@ -77,6 +82,7 @@ if [ $DEBUG ]; then
 	echo $metric
 	echo $classification
 	echo $outfile
+	echo $src
 fi
 
 # clean up previous train data files 
@@ -104,10 +110,18 @@ do
 		exit 0
 	fi
 	if [ ${meta} = "+" ]; then 
-		if [ $proc = "gpu" ]; then
+		if [ $proc = "gpu" ]; then			
 			$build
 			echo $exec > gpu_proglist
 			fts=`get_gpu_metrics.sh -i $eventfile -t gpu_proglist` 
+			if [ $src -eq 1 ]; then
+				if [ "$build" ]; then 
+					prog=`echo $build | awk '{print $NF}'`				
+				fi
+			  res=`parboil_gen_variant.sh -s -l 0`				
+				res=`echo $res | awk '{ for (i = 1; i <= NF; i++) printf "%3.0f,",$i;}'`
+			fi
+			fts=$res$fts
 			
   		# TODO: add a check to see if all metrics were measured. Handle mismatches accordingly
 			echo $fts | awk '{ for (i = 1; i <= NF; i++) printf "%3.5f,",$i; printf "\n"}' >> forcsv.txt
