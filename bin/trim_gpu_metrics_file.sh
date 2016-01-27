@@ -1,0 +1,1 @@
+../src/trim_gpu_metrics_file.sh
