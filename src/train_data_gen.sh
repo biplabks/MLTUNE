@@ -9,11 +9,10 @@ function usage() {
 		echo "Options:"
 		echo -e "   --help\t\t  print this help message"
     echo -e "   -m, --metric METRIC\t  METRIC can be power, energy or exec; default is exec"
-    echo -e "   -c, --class CLASS\t  CLASS can be bin or mult for binary or multiple classification; \
-                                     default is bin"
+    echo -e "   -c, --class CLASS\t  CLASS can be bin or mult; default is bin"
     echo -e "   -o, --outfile FILE\t  name of output file; default is METRIC_train_data.csv"
     echo -e "   -p, --processor PROC\t  PROC can be cpu or gpu; default is cpu"
-    echo -e "   -s, --source, collect source code features"
+    echo -e "   -s, --source\t collect source code features"
 }
 
 MINARGS=2
@@ -42,7 +41,7 @@ while [ $# -gt 0 ]; do
       shift # option has parameter
       ;;
     -s|--source)
-			src=1
+			src="true"
       ;;
     *)
 			if [ "$eventfile" = "" ]; then
@@ -63,7 +62,7 @@ done
 [ "$outfile" ] || { outfile=${metric}_train_data.csv; }
 [ "$classification" ] || { classification=bin; }
 [ "$proc" ] || { proc=cpu; }
-[ "$src" ] || { src=0; }
+[ "$src" ] || { src=""; }
 
 # check input files 
 [ -r "$eventfile" ] || { echo "could not read feature list file. exiting ..."; exit 0; }
@@ -78,10 +77,13 @@ if [ $DEBUG ]; then
 	echo $outfile
 	echo $src
 fi
-
 # clean up previous train data files 
 rm -f $outfile
 
+if [ $src ]; then
+    echo -n "reg blks thrds " > ${outfile}
+fi
+          
 # create header
 while read event
 do
@@ -100,22 +102,24 @@ do
 	exec=`echo $line | awk -F ";;" '{print $3}'`
 
 	if [ "${meta}" = "" ]; then 
-		echo "train_data_gen.sh : proglist file not formatted correctly. Exiting"
+		echo "train_data_gen.sh: proglist file not formatted correctly. Exiting"
 		exit 0
 	fi
 	if [ ${meta} = "+" ]; then 
 		if [ $proc = "gpu" ]; then			
-			$build
-			echo $exec > gpu_proglist
-			fts=`get_gpu_metrics.sh -i $eventfile -t gpu_proglist` 
-			if [ $src -eq 1 ]; then
-				if [ "$build" ]; then 
-					prog=`echo $build | awk '{print $NF}'`				
-				fi
-			  res=`parboil_gen_variant.sh -s -l 0`				
-			fi
-			fts=$res" "$fts
-			
+        if [ "$build" ]; then
+			      $build
+        fi
+			  echo $exec > gpu_proglist
+			  fts=`get_gpu_metrics.sh -i $eventfile -t gpu_proglist` 
+			  if [ $src ]; then
+				    if [ "$build" ]; then 
+					      prog=`echo $build | awk '{print $NF}'`				
+				    fi
+			      res=`parboil_gen_variant.sh -s -l 0`				
+			  fi
+			  fts=$res" "$fts
+			  
   		# TODO: add a check to see if all metrics were measured. Handle mismatches accordingly
 			echo $fts | awk '{ for (i = 1; i <= NF; i++) printf "%3.5f,",$i; printf "\n"}' >> forcsv.txt
 			rm -rf gpu_proglist
@@ -129,6 +133,6 @@ done < $progfile
 rm -f temp_hex_codes
 
 if [ "$classification" = "bin" ] || [ "$classification" = "mult" ]; then
-  energy_power_runtime.sh -n 1 -p ${proc} -m $metric -c $classification $progfile 
+  energy_power_runtime.sh -p ${proc} -m $metric -c $classification $progfile 
 fi 
 

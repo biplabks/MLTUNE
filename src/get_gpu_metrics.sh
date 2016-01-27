@@ -4,6 +4,7 @@ function usage() {
   echo "usage :"                                                               
   echo "    get_gpu_metrics.sh [OPTIONS] FILE"
   echo "    Collect cuda performance metrics for CUDA kernels described in FILE"
+  echo "    Assumes all events are measurable (i.e., no error checking) "
   echo " "
   echo "        FILE is proglist file "
   echo "Options: "

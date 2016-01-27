@@ -59,8 +59,10 @@ do
 		# gpu proglist has kernel name and execute command 
 		kernel=`echo $exec | awk '{print $1}'`
 		exec=`echo $exec | awk '{ for (i = 2; i <= NF; i++) print $i}'`
-		$build
-		if [ $metric = "power" ]; then
+    if [ "$build" ]; then
+		    $build
+    fi
+		    if [ $metric = "power" ]; then
       echo "biplab" ${kernel}          
       res=`get_primary_gpu.sh -m pwr -k ${kernel} -- $exec`
 		elif [ $metric = "energy" ]; then
@@ -211,7 +213,6 @@ do
 				trainVal=bad
 			fi
 		fi
-		echo $csvVal
 		echo `sed -n $csvVal forcsv.txt`$trainVal >> ${meta}_${metric}"_training_data.csv"
 	fi
 done < ${outfile}
@@ -231,7 +232,6 @@ for resfile in `ls *_speedups.txt`; do
 			trainVal=bad
 		fi
 		echo `sed -n $csvVal forcsv.txt`$trainVal >> ${model}_avg_training_data.csv
-		echo $csvVal
 		trackcsv=$((trackcsv+1))
 		csvVal=$trackcsv'p'
 	done < $resfile

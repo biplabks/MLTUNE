@@ -207,11 +207,12 @@ function build {
       fi
 			
       if [ "${launch}" ]; then 
-				(nvprof --events threads_launched,sm_cta_launched ./${prog} -i $args  > $prog.out) 2> tmp
+        kernel=${kernels_base[$i]}
+			  (nvprof --events threads_launched,sm_cta_launched ./${prog} -i $args  > $prog.out) 2> tmp
 				geom=`cat tmp | grep "${kernel}" -A 2 | grep "launched" | awk '{print $NF}'`
-				thrds_per_block=`echo $geom | awk '{ print $1/$2 }'`
+				thrds_per_block=`echo $geom | awk '{ printf "%5.0f", $1/$2 }'`
 				blocks_per_grid=`echo $geom | awk '{ print $2 }'`
-				echo $blocks_per_grid $thrds_per_block
+				echo ${blocks_per_grid} ${thrds_per_block}
       fi
 
       # clean up and restore
