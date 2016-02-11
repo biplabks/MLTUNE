@@ -115,8 +115,10 @@ do
 			  if [ $src ]; then
 				    if [ "$build" ]; then 
 					      prog=`echo $build | awk '{print $NF}'`				
-				    fi
-			      res=`parboil_gen_variant.sh -s -l 0`				
+                build_str=`echo $build | awk '{ for(i=1; i < NF; i++) printf $i" "}'`                
+                build_str=$build_str"-s -l ""$prog"                
+			          res=`$build_str`
+            fi
 			  fi
 			  fts=$res" "$fts
 			  
