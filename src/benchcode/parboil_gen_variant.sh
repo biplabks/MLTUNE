@@ -149,6 +149,10 @@ function build {
           if [ $prog = "sad" ]; then
               regs=`echo $regs | awk '{print $1}'`
           fi
+          if [ $prog = "track" ]; then
+              regs=`echo $regs | awk '{print $1}'`
+          fi
+					
       fi
       
       if [ $ver = "cuda" ]; then 
