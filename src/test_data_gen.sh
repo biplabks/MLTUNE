@@ -109,7 +109,7 @@ do
 					      prog=`echo $build | awk '{print $NF}'`				
                 build_str=`echo $build | awk '{ for(i=1; i < NF; i++) printf $i" "}'`                
                 build_str=$build_str"-s ""$prog"                
-			          res=`$build_str`
+								res=`$build_str`
             fi
 			  fi
 			  fts=$res" "$fts

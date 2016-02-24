@@ -40,7 +40,7 @@ for m in *${model}.model; do
 	i=$(($i+1))
 done
 
-j=0;
+j=1
 while [ $j -lt $i ]; do 
 	if [ ${preds[$j]} = "good" ]; then 
 		echo "best: $j"
@@ -50,5 +50,5 @@ while [ $j -lt $i ]; do
 done
 
 if [ $j -eq $i ]; then 
-	echo "best: none"
+	echo "best: 0"
 fi

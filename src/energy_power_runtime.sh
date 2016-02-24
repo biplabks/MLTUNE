@@ -62,7 +62,7 @@ do
     if [ "$build" ]; then
 		    $build
     fi
-		    if [ $metric = "power" ]; then
+		if [ $metric = "power" ]; then
       echo "biplab" ${kernel}          
       res=`get_primary_gpu.sh -m pwr -k ${kernel} -- $exec`
 		elif [ $metric = "energy" ]; then
