@@ -1,4 +1,4 @@
-#! /bin/bash
+#! /bin/bash -x
 
 function usage() {
     echo "usage: test_data_gen.sh [OPTIONS] FEATURE_LIST PROG_LIST"
@@ -115,7 +115,8 @@ do
 			  fts=$res" "$fts
 			  
 			# "bad" inserted as dummy class; satisfy weka
-			echo $fts | awk '{ for (i = 1; i <= NF; i++) printf "%3.5f,",$i; printf "bad\n"}' >> $outfile
+			#echo $fts | awk '{ for (i = 1; i <= NF; i++) printf "%3.5f,",$i; printf "bad\n"}' >> $outfile
+			echo $fts | sed 's/[^[0-9\.\-]]*/ /g;s/ \+/ /g;s/^ \+\| \+$//g' | awk '{ for (i = 1; i <= NF; i++) printf "%3.5f,",$i; printf "bad\n"}' >> $outfile
 			rm -rf gpu_proglist
 		else 
 			perf_counter $outfile temp_hex_codes $exec   
