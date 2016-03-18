@@ -1,0 +1,1 @@
+../src/benchcode/cudasdk_gen_variant.sh

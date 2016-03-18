@@ -2,14 +2,13 @@
 
 if [ $# -lt 1 ]; then
     echo "usage: "
-    echo "  ./parboil_gen_variant.sh <options> prog_num"
-		echo "builds a parboil executable with specified regs, blocksizes etc."
+    echo "  ./cudasdk_gen_variant.sh <options> prog_num"
+		echo "builds a cudasdk executable with specified regs, blocksizes etc."
 		echo ""
     echo "Options: "
     echo "      -v, --verify; check output agains reference"
+		echo "      -s, --showregs, show registe allocation"
 		echo "      -l, --launch, get launch configuration"
-		echo "      -s, --showregs, show register allocation"
-    echo "      -c, --codetype [cuda_base, cuda]"
     echo "      -r, --regs REGS; REGS legal values, {16..512}" 
     echo "      -d, --dataset [small, medium, large]"
     echo "      -b, --blocksize BLOCKSIZE; BLOCKSIZE legal values {32..1024}" 
@@ -34,10 +33,6 @@ while [ $# -gt 0 ]; do
       blocksize="$2"
       shift 
       ;;
-    -c|--codetype)
-      ver="$2"
-      shift 
-      ;;
     -l|--launch)
       launch=true
       ;;
@@ -57,18 +52,17 @@ while [ $# -gt 0 ]; do
   shift 
 done
 
-[ "$prog" ] || { echo "no program specified. exiting ..."; exit 0; }
-
 
 # enviornment specific variables; needs to be set at install time 
-PARBOIL_HOME=$HOME/Experiments/Parboil
-input_dir=${PARBOIL_HOME}/datasets
+
+CUDASDK_HOME=${HOME}/Experiments/CUDA_SDK
+[ -x ${CUDASDK_HOME} ] || { "unable to cd to Cudasdk home directory; exiting ..." ; exit 1; }  
+
+input_dir=${CUDASDK_HOME}/datasets
 ref_output_dir=${input_dir}
 
-MAKEFILE_DIR=${PARBOIL_HOME}/benchmarks
+MAKEFILE_DIR=${CUDASDK_HOME}/benchmarks
 MAKEFILE="Makefile.conf"
-
-[ -x ${PARBOIL_HOME} ] || { "unable to cd to Parboil home directory; exiting ..." ; exit 1; }  
 
 
 if [ "${maxreg}" = "" ]; then 
@@ -80,26 +74,21 @@ fi
 if [ "${dataset}" = "" ]; then 
 	dataset=small
 fi
-if [ "${ver}" = "" ]; then 
-	ver="cuda_base"
-fi
 
 if [ $DEBUG ]; then 
    echo $prog
-   echo $ver
    echo $maxreg
    echo $blocksize
 fi
 
-cd ${PARBOIL_HOME}
-source parboil_vardefs.sh ${input_dir}
+cd ${CUDASDK_HOME}
+source cudasdk_vardefs.sh ${input_dir}
 
 function build {
   i=$1
   prog=${progs[$i]}
-  ver=$2
 
-  srcdir="${PARBOIL_HOME}/benchmarks/$prog/src/$ver"
+  srcdir="${CUDASDK_HOME}/benchmarks/$prog/src"
 
   pushd ${MAKEFILE_DIR}  > /dev/null
   cp ${MAKEFILE} ${MAKEFILE}.orig
@@ -116,23 +105,11 @@ function build {
 
       if [ ${blocksize} != "default" ]; then
 				case ${prog} in 
-					"lbm") 
-						srcfile=${prog}.cu
-						;;
-					"mri-gridding")
-						srcfile=CUDA_interface.cu
-						;;
-					"mri-q")
-						srcfile=computeQ.cu
-						;;
-					"sgemm"|"tpacf")
-						srcfile=${prog}_kernel.cu
-						;;
-					"spmv")
-						srcfile=gpu_info.cc
+					"SobolQRNG") 
+						srcfile=sobol_gpu.cu
 						;;
 					*)
-						srcfile=main.cu
+						srcfile=${prog}.cu
 						;;
 				esac
 				cp ${srcfile} ${srcfile}.orig
@@ -141,30 +118,12 @@ function build {
 
       regs=`make 2>&1 | grep "registers" | awk '{ print $5 }'`
 
-      if [ $ver = "cuda_base" ]; then 
-          if [ $prog = "histo" ]; then
-              regs=`echo $regs | awk '{print $3}'`
-          fi
-          if [ $prog = "mri-gridding" ]; then
-              regs=`echo $regs | awk '{print $2}'`
-          fi
-          if [ $prog = "sad" ]; then
-              regs=`echo $regs | awk '{print $1}'`
-          fi
-          if [ $prog = "track" ]; then
-              regs=`echo $regs | awk '{print $1}'`
-          fi
-					
-      fi
-      
-      if [ $ver = "cuda" ]; then 
-          if [ $prog = "mri-q" ] || [ $prog = "mri-gridding" ]; then
-              regs=`echo $regs | awk '{print $2}'`
-          else
-              regs=`echo $regs | awk '{print $1}'`
-          fi
-      fi
-
+			case ${prog} in 
+				"matrixMul") 
+					regs=`echo $regs | awk '{print $1}'`
+					;;
+			esac
+				
 			if [ "${showregs}" ]; then 
 				echo $regs
 			fi
@@ -194,31 +153,24 @@ function build {
       fi
 
       if [ "${check}" ]; then 
-				check_script="../../tools/compare-output"
-				
-				if [ ! -x ${check_script} ]; then 
-					echo "FAIL: could not find check script, not validating results"
-				else
 					./${prog} -i $args  > $prog.out
-					res=`${check_script} ${ref_output_dir}/${prog}/ref_${dataset}.dat result.dat 2> /dev/null`
-					res=`echo $res | grep "Pass"`
+					res=`cat ${prog}.out | grep "PASS"`
 					if [ ! "${res}" ]; then 
 						res="FAIL"
 					fi
-				fi
       fi
+
 			
       if [ "${res}" = "FAIL" ]; then 
 				echo $res ": executable not valid" 
       fi
 			
-      if [ "${launch}" ]; then 
-        kernel=${kernels_base[$i]}
-			  (nvprof --events threads_launched,sm_cta_launched ./${prog} -i $args  > $prog.out) 2> tmp
+			if [ "${launch}" ]; then 
+				(nvprof --events threads_launched,sm_cta_launched ./${prog} -i $args  > $prog.out) 2> tmp
 				geom=`cat tmp | grep "${kernel}" -A 2 | grep "launched" | awk '{print $NF}'`
-				thrds_per_block=`echo $geom | awk '{ printf "%5.0f", $1/$2 }'`
+				thrds_per_block=`echo $geom | awk '{ print $1/$2 }'`
 				blocks_per_grid=`echo $geom | awk '{ print $2 }'`
-				echo ${blocks_per_grid} ${thrds_per_block}
+				echo $blocks_per_grid $thrds_per_block
       fi
 
       # clean up and restore
@@ -229,7 +181,7 @@ function build {
       rm -rf tmp $prog.out
       popd > /dev/null
   else
-      echo "FAIL: $ver not found for prog $prog" 
+      echo "FAIL: $srcdir not found for prog $prog" 
   fi
 
   # back in makefile dir
@@ -237,4 +189,4 @@ function build {
   popd > /dev/null
 }
 
-build $prog $ver
+build $prog

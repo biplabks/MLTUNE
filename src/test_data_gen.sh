@@ -118,7 +118,7 @@ do
 			echo $fts | awk '{ for (i = 1; i <= NF; i++) printf "%3.5f,",$i; printf "bad\n"}' >> $outfile
 			rm -rf gpu_proglist
 		else 
-			perf_counter $outfile temp_hex_codes $exec   
+			echo "CPU test data gen is not supported"
 		fi
   fi
 done < $progfile
