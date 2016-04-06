@@ -64,12 +64,18 @@ case ${model} in
     ibk)
         weka_model="weka.classifiers.lazy.IBk"
         ;;
+	  svm) 
+		   weka_model="weka.classifiers.functions.SMO"
+			 ;;
+	  bayes) 
+		 weka_model="weka.classifiers.bayes.NaiveBayes"
+		  ;;
     *)
-        echo "Unknown model: $model. Swithing to default: logit"
-        ;;
+      echo "Unknown model: $model. Swithing to default: logit"
+      ;;
 esac
 
-java ${weka_model} -d ${outfile}.model -x ${folds} -t ${datafile} 
+java ${weka_model} -d ${outfile} -x ${folds} -t ${datafile} 
 
 
 

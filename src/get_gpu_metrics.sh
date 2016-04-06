@@ -95,7 +95,7 @@ i=0
 while IFS='' read -r line || [[ -n $line ]]; do
   kernels[$i]=`echo $line | awk '{print $1}'`
   progs[$i]=`echo $line | awk '{print $2}'`
-	prognames[$i]=`basename ${progs[$i]}`
+  prognames[$i]=`basename ${progs[$i]}`
   prog_args[$i]=`echo $line | awk '{$1=""; $2=""; print $0}'`
   i=$(($i+1))
 done <  ${proglist}

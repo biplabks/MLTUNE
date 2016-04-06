@@ -52,12 +52,20 @@ case ${model} in
     ibk)
         weka_model="weka.classifiers.lazy.IBk"
         ;;
-    *)
+    svm) 
+		   weka_model="weka.classifiers.functions.SMO"
+			  ;;
+	  bayes) 
+		 weka_model="weka.classifiers.bayes.NaiveBayes"
+		   ;;
+	   *)
         echo "Unknown model: $model. Swithing to default: logit"
         ;;
 esac
 
-java ${weka_model} -l ${modelfile} -T ${datafile} -p 0 | grep predicted -A 1 | tail -1 | awk '{print $3}' | awk -F ":" '{print $2}'
+#java ${weka_model} -l ${modelfile} -T ${datafile} -p 0 | grep predicted -A 1 | tail -1 | awk '{print $3}' | awk -F ":" '{print $2}'
+
+java ${weka_model} -l ${modelfile} -T ${datafile} -p 0 
 
 
 

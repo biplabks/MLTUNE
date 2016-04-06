@@ -108,27 +108,27 @@ do
 	if [ ${meta} = "+" ]; then 
 		if [ $proc = "gpu" ]; then			
         if [ "$build" ]; then
-			      $build
+	    $build
         fi
-			  echo $exec > gpu_proglist
-			  fts=`get_gpu_metrics.sh -i $eventfile -t gpu_proglist` 
-			  if [ $src ]; then
-				    if [ "$build" ]; then 
-					      prog=`echo $build | awk '{print $NF}'`				
-                build_str=`echo $build | awk '{ for(i=1; i < NF; i++) printf $i" "}'`                
-                build_str=$build_str"-s -l ""$prog"                
-			          res=`$build_str`
+	echo $exec > gpu_proglist
+	fts=`get_gpu_metrics.sh -i $eventfile -t gpu_proglist` 
+	if [ $src ]; then
+	    if [ "$build" ]; then 
+		prog=`echo $build | awk '{print $NF}'`				
+		build_str=`echo $build | awk '{ for(i=1; i < NF; i++) printf $i" "}'`                
+                build_str=$build_str"-s ""$prog"                
+		res=`$build_str`
             fi
-			  fi
-			  fts=$res" "$fts
-			  
-  		# TODO: add a check to see if all metrics were measured. Handle mismatches accordingly
-			echo $fts | awk '{ for (i = 1; i <= NF; i++) printf "%3.5f,",$i; printf "\n"}' >> forcsv.txt
-			rm -rf gpu_proglist
+	fi
+	fts=$res" "$fts
+	
+  	# TODO: add a check to see if all metrics were measured. Handle mismatches accordingly
+	echo $fts | awk '{ for (i = 1; i <= NF; i++) printf "%3.5f,",$i; printf "\n"}' >> forcsv.txt
+	rm -rf gpu_proglist
 		else 
-			perf_counter $outfile temp_hex_codes $exec   
+		    perf_counter $outfile temp_hex_codes $exec   
 		fi
-  fi
+	fi
 done < $progfile
 
 # cleanup tmp files 
