@@ -7,6 +7,7 @@ if [ $# -lt 1 ]; then
 		echo ""
     echo "Options: "
     echo "      -v, --verify; check output agains reference"
+    echo "      -t, --time; report execution time"
 		echo "      -l, --launch, get launch configuration"
 		echo "      -s, --showregs, show register allocation"
     echo "      -c, --codetype [cuda_base, cuda]"
@@ -25,6 +26,9 @@ while [ $# -gt 0 ]; do
       ;;
     -v|--verify)
       check=true
+      ;;
+    -t|--time)
+      perf=true
       ;;
     -d|--dataset)
       dataset="$2"
@@ -208,6 +212,9 @@ function build {
 				fi
       fi
 			
+			if [ "${perf}" ]; then 
+				get_primary_gpu.sh -m time -- ./${prog} -i $args 
+			fi
       if [ "${res}" = "FAIL" ]; then 
 				echo $res ": executable not valid" 
       fi
