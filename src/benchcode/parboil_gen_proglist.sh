@@ -13,12 +13,9 @@ fi
 while [ $# -gt 0 ]; do
   key="$1"
   case $key in
-    -r|--regs)
-      maxreg="$2"
-      shift 
-      ;;
     -b|--blockvars)
 			blockvars="true"
+			;;
     -d|--dataset)
       dataset="$2"
       shift 
@@ -148,10 +145,8 @@ function blocksize_variants() {
 }
 
 if [ $blockvars ]; then 
-	echo "blocks"
+	blocksize_variants
 else 
-	echo regs
+	reg_cap_variants
 fi
 
-#reg_cap_variants
-#blocksize_variants
