@@ -169,9 +169,10 @@ function build {
           fi
       fi
 
-			if [ "${showregs}" ]; then 
-				echo $regs
-			fi
+			# deprecated (bundled with launch configuration)
+			# if [ "${showregs}" ]; then 
+			# 	echo $regs
+			# fi
 
       # notify if build failed 
       if [ ! -x ${prog} ]; then 
@@ -225,7 +226,7 @@ function build {
 				geom=`cat tmp | grep "${kernel}" -A 2 | grep "launched" | awk '{print $NF}'`
 				thrds_per_block=`echo $geom | awk '{ printf "%5.0f", $1/$2 }'`
 				blocks_per_grid=`echo $geom | awk '{ print $2 }'`
-				echo ${blocks_per_grid} ${thrds_per_block}
+				echo $regs ${blocks_per_grid} ${thrds_per_block}
       fi
 
       # clean up and restore
