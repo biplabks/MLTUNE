@@ -38,6 +38,14 @@ while [ $# -gt 0 ]; do
       blocksize="$2"
       shift 
       ;;
+    -m|--max_thrds)
+      max_thrds="$2"
+      shift 
+      ;;
+    -n|--min_thrds)
+      min_blks="$2"
+      shift 
+      ;;
     -c|--codetype)
       ver="$2"
       shift 
@@ -88,11 +96,27 @@ if [ "${ver}" = "" ]; then
 	ver="cuda_base"
 fi
 
+if [ ! "${max_thrds}" ]; then 
+	if [ ! "${min_blks}" ]; then 
+		max_thrds=default
+		min_blks=default
+	else 
+		max_thrds=1024
+	fi
+else 
+	if [ ! "${min_blks}" ]; then 
+		min_blks=1
+	fi
+fi 
+
 if [ $DEBUG ]; then 
    echo $prog
    echo $ver
    echo $maxreg
+   echo ${max_thrds}
+   echo ${min_blks}
    echo $blocksize
+	 exit 
 fi
 
 cd ${PARBOIL_HOME}
@@ -113,6 +137,13 @@ function build {
   if [ ${blocksize} != "default" ]; then
     sed -i "s/BLOCKPARAM=/BLOCKPARAM=-DML/" ${MAKEFILE}
 	fi  
+
+	
+  if [ ${max_thrds} != "default" ] || [ ${min_blks} != "default" ]; then 
+		sed -i "s/LAUNCH=/LAUNCH=-DLAUNCH/" ${MAKEFILE}
+		sed -i "s/ML_MAX_THRDS_PER_BLK=/ML_MAX_THRDS_PER_BLK=-DML_MAX_THRDS_PER_BLK=${max_thrds}/" ${MAKEFILE}
+		sed -i "s/ML_MIN_BLKS_PER_MP=/ML_MIN_BLKS_PER_MP=-DML_MIN_BLKS_PER_MP=${min_blks}/" ${MAKEFILE}
+	fi
 
   if [ -d  $srcdir ]; then 
       pushd $srcdir > /dev/null
@@ -170,9 +201,9 @@ function build {
       fi
 
 			# deprecated (bundled with launch configuration)
-			# if [ "${showregs}" ]; then 
-			# 	echo $regs
-			# fi
+		  if [ "${showregs}" ]; then 
+			 	echo $regs
+			fi
 
       # notify if build failed 
       if [ ! -x ${prog} ]; then 

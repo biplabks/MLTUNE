@@ -62,7 +62,7 @@ source ${PARBOIL_HOME}/parboil_vardefs.sh ${input_dir}
 models="default 16 20 24 32 40 48 64 512" 
 
 function reg_cap_variants() {
-	for prog in {0..10}; do
+	for prog in {11..21}; do
 		if [ $ver = "cuda_base" ]; then
 			kernel=${kernels_base[$prog]}  
 		fi
