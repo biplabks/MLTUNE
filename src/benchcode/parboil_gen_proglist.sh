@@ -59,7 +59,72 @@ source ${PARBOIL_HOME}/parboil_vardefs.sh ${input_dir}
 [ "${ver}" ] || { ver="cuda_base"; }
 
 
-models="default 16 20 24 32 40 48 64 512" 
+variants="default 16 20 24 32 40 48 64 512" 
+
+
+function reg_cap_new() {
+	for prog in {0..21}; do
+		if [ $ver = "cuda_base" ]; then
+			kernel=${kernels_base[$prog]}  
+		fi
+		if [ $ver = "cuda" ]; then
+			kernel=${kernels[$prog]}  
+		fi
+		# get number of allocated registers with --maxrregcount 512 for _this_ program
+		launch=`parboil_gen_variant.sh -c $ver -r 512 -l $prog`
+
+		reg_512=`echo $launch | awk '{print $1}'`
+		bkls_def=`echo $launch | awk '{print $2}'`
+		thrds_def=`echo $launch | awk '{print $3}'`
+
+		reg_last=0
+		
+		i=0
+		for v in $variants; do
+			
+			# get number of registers for _this_ variant  
+			launch=`parboil_gen_variant.sh -c $ver -r $v -l $prog`
+			reg_def=`echo $launch | awk '{print $1}'`                  # only reg, launch is same as -r 512
+
+			# check if we have seen this variant before 
+			found=0 
+			for ((j=0; j < $i; j++)); do 
+				if [ ${reg_def} = ${regs[$j]} ]; then 
+					found=1
+					break
+				fi
+			done
+			
+			# only consider if this is a new variant
+			if [ ${found} -ne 1 ]; then  
+				regs[$i]=${reg_def}
+
+        # get number of registers for default threads/block and min blocks/grid 
+  			launch=`parboil_gen_variant.sh -m ${thrds_def} -n 1 -c $ver -l $prog`
+				reg_max=`echo $launch | awk '{print $1}'`
+				
+   	  	# only consider this instance, if a variation in reg allocation is observed 
+				if [ ${reg_max} -gt ${reg_def} ] || [ ${reg_512} -gt ${reg_def} ]; then 
+					build="parboil_gen_variant.sh -c $ver -r $v $prog"
+					exec=`${PARBOIL_HOME}/parboil_cmd_gen.sh -c $ver $prog`
+					echo "+ ;;" $build " ;; " $kernel $exec
+					
+   		    # consider the larger of the two for "opt" variant  
+					if [ ${reg_max} -gt ${reg_512} ]; then 
+						build="parboil_gen_variant.sh -m ${thrds_def} -n 1 -c $ver $prog"
+					else 
+						build="parboil_gen_variant.sh -r 512 -c $ver $prog"
+					fi
+					exec=`${PARBOIL_HOME}/parboil_cmd_gen.sh -c $ver $prog`
+					echo "aggr ;;" $build " ;; " $kernel $exec
+				fi
+				i=$(($i+1))
+			fi
+
+#			echo ${reg_def} ${reg_512}
+		done
+	done
+}
 
 function reg_cap_variants() {
 	for prog in {11..21}; do
@@ -147,6 +212,6 @@ function blocksize_variants() {
 if [ $blockvars ]; then 
 	blocksize_variants
 else 
-	reg_cap_variants
+	reg_cap_new
 fi
 

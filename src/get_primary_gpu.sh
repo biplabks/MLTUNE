@@ -4,7 +4,7 @@ if [ $# -lt 1 ]; then
   echo "usage :"
   echo "    $0  <options> -- prog [ prog args ]"
   echo " Options "
-  echo -e "    -m |--metric\t  [time,pwr] "
+  echo -e "    -m |--metric\t  [time,pwr,memdiv] "
   echo -e "    -k |--kernel\t  kernel name"
   echo "    prog = path to executable or script (for workloads)"
   echo "    prog args = arguments to program or script"

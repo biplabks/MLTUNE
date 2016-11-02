@@ -56,9 +56,11 @@ do
 	exec=`echo $line | awk -F ";;" '{print $3}'`
 
 	if [ $proc = "gpu" ]; then
+
 		# gpu proglist has kernel name and execute command 
 		kernel=`echo $exec | awk '{print $1}'`
 		exec=`echo $exec | awk '{ for (i = 2; i <= NF; i++) print $i}'`
+
     if [ "$build" ]; then
 		    $build
     fi

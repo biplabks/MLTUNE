@@ -75,7 +75,7 @@ case ${model} in
       ;;
 esac
 
-java ${weka_model} -d ${outfile} -x ${folds} -t ${datafile} 
+java ${weka_model} -U -d ${outfile} -x ${folds} -t ${datafile} 
 
 
 
