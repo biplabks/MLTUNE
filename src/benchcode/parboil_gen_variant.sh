@@ -24,6 +24,10 @@ while [ $# -gt 0 ]; do
       maxreg="$2"
       shift 
       ;;
+    -a|--ra)
+      ra_level="$2"
+      shift 
+      ;;
     -v|--verify)
       check=true
       ;;
@@ -131,6 +135,8 @@ function build {
 
   pushd ${MAKEFILE_DIR}  > /dev/null
   cp ${MAKEFILE} ${MAKEFILE}.orig
+  
+	sed -i "s/RALEVEL=/RALEVEL=${ra_level}/" ${MAKEFILE}
   if [ ${maxreg} != "default" ]; then
     sed -i "s/REGCAP=/REGCAP=--maxrregcount=${maxreg}/" ${MAKEFILE}
   fi

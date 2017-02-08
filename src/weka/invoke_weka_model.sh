@@ -63,9 +63,9 @@ case ${model} in
         ;;
 esac
 
-#java ${weka_model} -l ${modelfile} -T ${datafile} -p 0 | grep predicted -A 1 | tail -1 | awk '{print $3}' | awk -F ":" '{print $2}'
+java ${weka_model} -l ${modelfile} -T ${datafile} -p 0 | grep predicted -A 1 | tail -1 | awk '{print $3}' | awk -F ":" '{print $2}'
 
-java ${weka_model} -l ${modelfile} -T ${datafile} -p 0 
+#java ${weka_model} -l ${modelfile} -T ${datafile} -p 0 
 
 
 
