@@ -258,9 +258,13 @@ function build {
       fi
 			
       if [ "${launch}" ]; then 
-        kernel=${kernels_base[$i]}
-			  (nvprof --events threads_launched,sm_cta_launched ./${prog} -i $args  > $prog.out) 2> tmp
-				geom=`cat tmp | grep "${kernel}" -A 2 | grep "launched" | awk '{print $NF}'`
+				if [ $ver = "cuda" ]; then 
+					kernel=${kernels[$i]}
+				else 
+					kernel=${kernels_base[$i]}
+				fi
+			  (nvprof --events threads_launched,sm_cta_launched ./${prog} -i $args  > $prog.out) 2> new_tmp
+				geom=`cat new_tmp | grep "${kernel}" -A 2 | grep "launched" | awk '{print $NF}'`
 				thrds_per_block=`echo $geom | awk '{ printf "%5.0f", $1/$2 }'`
 				blocks_per_grid=`echo $geom | awk '{ print $2 }'`
 				echo $regs ${blocks_per_grid} ${thrds_per_block}
