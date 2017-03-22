@@ -14,6 +14,7 @@ if [ $# -lt 1 ]; then
     echo "      -r, --regs REGS; REGS legal values, {16..512}" 
     echo "      -d, --dataset [small, medium, large]"
     echo "      -b, --blocksize BLOCKSIZE; BLOCKSIZE legal values {32..1024}" 
+		echo "      -g, --debug"
     exit 0
 fi
 
@@ -29,6 +30,9 @@ while [ $# -gt 0 ]; do
       ;;
     -t|--time)
       perf=true
+      ;;
+    -g|--debug)
+      debug=true
       ;;
     -d|--dataset)
       dataset="$2"
@@ -151,6 +155,9 @@ function build {
 
       if [ ${blocksize} != "default" ]; then
 				case ${prog} in 
+					"cutcp") 
+						srcfile=cutoff.cu
+						;;
 					"lbm") 
 						srcfile=${prog}.cu
 						;;
@@ -174,7 +181,12 @@ function build {
 				sed -i "s/__BLOCKSIZE0/${blocksize}/" ${srcfile}
       fi  
 
-      regs=`make 2>&1 | grep "registers" | awk '{ print $5 }'`
+      (make 2>&1) > tmp
+      regs=`cat tmp | grep "registers" | awk '{ print $5 }'`
+			if [ "${debug}" ]; then 
+				cp tmp regs.dbg
+			fi
+			
 
       if [ $ver = "cuda_base" ]; then 
           if [ $prog = "histo" ]; then
@@ -254,6 +266,9 @@ function build {
       if [ "${launch}" ]; then 
         kernel=${kernels_base[$i]}
 			  (nvprof --events threads_launched,sm_cta_launched ./${prog} -i $args  > $prog.out) 2> tmp
+				if [ "${debug}" ]; then 
+					cp tmp launch.dbg
+				fi
 				geom=`cat tmp | grep "${kernel}" -A 2 | grep "launched" | awk '{print $NF}'`
 				thrds_per_block=`echo $geom | awk '{ printf "%5.0f", $1/$2 }'`
 				blocks_per_grid=`echo $geom | awk '{ print $2 }'`
