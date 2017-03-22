@@ -35,8 +35,9 @@ done
 
 
 i=0
-for m in *${model}.model; do 
+for m in *${model}*.model; do 
 	preds[$i]=`invoke_weka_model.sh -m ${model} $m $datafile`
+	echo ${preds[$i]}
 	i=$(($i+1))
 done
 
