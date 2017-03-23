@@ -183,7 +183,10 @@ function build {
 						srcfile=main.cu
 						;;
 				esac
-				cp ${srcfile} ${srcfile}.orig
+				#commented out because we want to copy the src to src.orig only once, upon install
+				#otherwise the .orig will become corrupted if this .sh file terminates before restore
+				#and impact all future runs. Can be easily fixed, but users may not notice.
+				#cp ${srcfile} ${srcfile}.orig
 				sed -i "s/__BLOCKSIZE0/${blocksize}/" ${srcfile}
       fi  
 
@@ -247,20 +250,21 @@ function build {
           args=${args_large[$i]}
       fi
 
-      if [ "${check}" ]; then 
-				check_script="../../tools/compare-output"
-				
-				if [ ! -x ${check_script} ]; then 
-					echo "FAIL: could not find check script, not validating results"
-				else
-					./${prog} -i $args  > $prog.out
-					res=`${check_script} ${ref_output_dir}/${prog}/ref_${dataset}.dat result.dat 2> /dev/null`
-					res=`echo $res | grep "Pass"`
-					if [ ! "${res}" ]; then 
-						res="FAIL"
-					fi
-				fi
-      fi
+	# bundled with launch
+#     if [ "${check}" ]; then 
+#				check_script="../../tools/compare-output"
+   				
+#				if [ ! -x ${check_script} ]; then 
+#					echo "FAIL: could not find check script, not validating results"
+#				else
+#					./${prog} -i $args  > $prog.out
+#					res=`${check_script} ${ref_output_dir}/${prog}/ref_${dataset}.dat result.dat 2> /dev/null`
+#					res=`echo $res | grep "Pass"`
+#					if [ ! "${res}" ]; then 
+#						res="FAIL"
+#					fi
+#				fi
+#      fi
 			
 			if [ "${perf}" ]; then 
 				get_primary_gpu.sh -m time -- ./${prog} -i $args 
@@ -268,29 +272,52 @@ function build {
       if [ "${res}" = "FAIL" ]; then 
 				echo $res ": executable not valid" 
       fi
-			
-      if [ "${launch}" ]; then 
-				if [ $ver = "cuda" ]; then 
-					kernel=${kernels[$i]}
-				else 
+
+	if [ "${launch}" ] || [ "${check}" ]; then
+                                if [ $ver = "cuda" ]; then
+                                        kernel=${kernels[$i]}
+                                else                
 					kernel=${kernels_base[$i]}
 				fi
-			  (nvprof --events threads_launched,sm_cta_launched ./${prog} -i $args  > $prog.out) 2> tmp
-				if [ "${debug}" ]; then 
-					cp tmp launch.dbg
-				fi
-				geom=`cat tmp | grep "${kernel}" -A 2 | grep "launched" | awk '{print $NF}'`
 
-				thrds_per_block=`echo $geom | awk '{ printf "%5.0f", $1/$2 }'`
-				blocks_per_grid=`echo $geom | awk '{ print $2 }'`
-				echo $regs ${blocks_per_grid} ${thrds_per_block}
-      fi
+                [ `which nvprof` ] || { echo "could not find nvprof in path. Existing..."; exit 1; }
+                (nvprof --events threads_launched,sm_cta_launched ./${prog} -i $args  > $prog.out) 2> tmp
+                                if [ "${debug}" ]; then
+                                        cp tmp launch.dbg
+                                fi
 
+                check_script="../../tools/compare-output"
+
+                if [ ! -x ${check_script} ]; then
+                        echo "FAIL: could not find check script, not validating results"
+                else
+                        export PYTHONPATH="${PYTHONPATH}:${PARBOIL_HOME}/benchmarks/python"
+                        res=`${check_script} ${ref_output_dir}/${prog}/ref_${dataset}.dat result.dat 2> /dev/null`
+                        res=`echo $res | grep "Pass"`
+                        if [ ! "${res}" ]; then
+                                res="FAIL"
+                        fi
+
+                        if [ "${launch}" ]; then
+                                geom=`cat tmp | grep "${kernel}" -A 2 | grep "launched" | awk '{print $NF}'`
+                                thrds_per_block=`echo $geom | awk '{ printf "%5.0f", $1/$2 }'`
+                                blocks_per_grid=`echo $geom | awk '{ print $2 }'`
+                                echo $regs ${blocks_per_grid} ${thrds_per_block}
+                        fi
+                fi
+	fi
+
+	if [ "${res}" = "FAIL" ]; then
+                echo $res ": executable not valid" 
+        fi
+
+			
       # clean up and restore
       if [ ${blocksize} != "default" ]; then
 				cp ${srcfile} ${srcfile}.gen
 				cp ${srcfile}.orig ${srcfile}
       fi
+      echo " " > results.dat #can cause check script errors if file is not reset to blank
       rm -rf tmp $prog.out
       popd > /dev/null
   else
