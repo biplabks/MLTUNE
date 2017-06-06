@@ -32,8 +32,9 @@ while [ $# -gt 0 ]; do
     -v|--verify)
       check=true
       ;;
-    -t|--time)
-      perf=true
+    -p|--profile)
+      perf="$2"
+			shift
       ;;
     -g|--debug)
       debug=true
@@ -262,30 +263,33 @@ function build {
 				fi
       fi
 			
-			if [ "${perf}" ]; then 
-				get_primary_gpu.sh -m time -- ./${prog} -i $args 
+			if [ "${perf}" ]; then
+				if [ ${perf} = "exec" ]; then 
+					get_primary_gpu.sh -m time -- ./${prog} -i $args 
+				fi
+				if [ ${perf} = "pwr" ]; then 
+					get_primary_gpu.sh -m pwr -- ./${prog} -i $args 
+				fi
+				if [ ${perf} = "memdiv" ]; then 
+					get_primary_gpu.sh -m memdiv -- ./${prog} -i $args 
+				fi
 			fi
       if [ "${res}" = "FAIL" ]; then 
 				echo $res ": executable not valid" 
       fi
 			
       if [ "${launch}" ]; then 
-<<<<<<< HEAD
-        kernel=${kernels_base[$i]}
-			  (nvprof --events threads_launched,sm_cta_launched ./${prog} -i $args  > $prog.out) 2> tmp
-				if [ "${debug}" ]; then 
-					cp tmp launch.dbg
-				fi
-				geom=`cat tmp | grep "${kernel}" -A 2 | grep "launched" | awk '{print $NF}'`
-=======
 				if [ $ver = "cuda" ]; then 
 					kernel=${kernels[$i]}
 				else 
 					kernel=${kernels_base[$i]}
 				fi
-			  (nvprof --events threads_launched,sm_cta_launched ./${prog} -i $args  > $prog.out) 2> new_tmp
-				geom=`cat new_tmp | grep "${kernel}" -A 2 | grep "launched" | awk '{print $NF}'`
->>>>>>> a5467b5f20ff0f401b051a6146204e45eeeb9581
+			  (nvprof --events threads_launched,sm_cta_launched ./${prog} -i $args  > $prog.out) 2> tmp
+				if [ "${debug}" ]; then 
+					cp tmp launch.dbg
+				fi
+				geom=`cat tmp | grep "${kernel}" -A 2 | grep "launched" | awk '{print $NF}'`
+
 				thrds_per_block=`echo $geom | awk '{ printf "%5.0f", $1/$2 }'`
 				blocks_per_grid=`echo $geom | awk '{ print $2 }'`
 				echo $regs ${blocks_per_grid} ${thrds_per_block}

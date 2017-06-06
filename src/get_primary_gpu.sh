@@ -73,5 +73,7 @@ fi
 
 if [ ${metric} = "memdiv" ]; then 
   ctrs=`nvprof --metrics gld_transactions_per_request,gst_transactions_per_request $execstr 2>&1 | grep "transactions_per_request" | awk '{print $NF}'`
-	echo $ctrs 
+	ld_div=`echo $ctrs | awk '{print $1}'`
+	st_div=`echo $ctrs | awk '{print $2}'`
+	echo ${ld_div},${st_div}
 fi
