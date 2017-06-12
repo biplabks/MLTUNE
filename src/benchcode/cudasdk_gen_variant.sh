@@ -9,6 +9,7 @@ if [ $# -lt 1 ]; then
     echo "      -v, --verify; check output agains reference"
 		echo "      -s, --showregs, show registe allocation"
 		echo "      -l, --launch, get launch configuration"
+    echo "      -p, --profile; report execution time"
     echo "      -r, --regs REGS; REGS legal values, {16..512}" 
     echo "      -d, --dataset [small, medium, large]"
     echo "      -b, --blocksize BLOCKSIZE; BLOCKSIZE legal values {32..1024}" 
@@ -21,6 +22,10 @@ while [ $# -gt 0 ]; do
     -r|--regs)
       maxreg="$2"
       shift 
+      ;;
+    -p|--profile)
+      perf="$2"
+			shift
       ;;
     -v|--verify)
       check=true
@@ -160,8 +165,19 @@ function build {
 					fi
       fi
 
-			
-      if [ "${res}" = "FAIL" ]; then 
+			if [ "${perf}" ]; then
+				if [ ${perf} = "exec" ]; then 
+					get_primary_gpu.sh -m time -- ./${prog} -i $args 
+				fi
+				if [ ${perf} = "pwr" ]; then 
+					get_primary_gpu.sh -m pwr -- ./${prog} -i $args 
+				fi
+				if [ ${perf} = "memdiv" ]; then 
+					get_primary_gpu.sh -m memdiv -- ./${prog} -i $args 
+				fi
+			fi
+
+			if [ "${res}" = "FAIL" ]; then 
 				echo $res ": executable not valid" 
       fi
 			
