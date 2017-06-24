@@ -199,7 +199,7 @@ function build {
       spills=`cat tmp | grep "spill" | awk '{print $5 + $9}'`
       regs=`cat tmp | grep "registers" | awk '{ print $5 }'`
       if [ "${debug}" ]; then 
-	  cp tmp regs.dbg
+				cp tmp regs.dbg
       fi
       
 
@@ -228,28 +228,28 @@ function build {
       fi
       
       if [ "${showspills}" ]; then
-	  echo $spills
+				echo $spills
       fi
       
       # deprecated (bundled with launch configuration)
       if [ "${showregs}" ]; then 
-	  echo $regs
+				echo $regs
       fi
 
       # notify if build failed 
       if [ ! -x ${prog} ]; then 
-	  echo "FAIL: could not generate variant; make failed for $prog"
+				echo "FAIL: could not generate variant; make failed for $prog"
 	  
-	  if [ ${blocksize} != "default" ]; then
-	      cp ${srcfile}.orig ${srcfile}
-	  fi
-	  popd > /dev/null
-          # back in makefile dir
-	  cp ${MAKEFILE}.orig ${MAKEFILE}
-	  popd > /dev/null
-	  exit 1
+				if [ ${blocksize} != "default" ]; then
+					cp ${srcfile}.orig ${srcfile}
+				fi
+				popd > /dev/null
+        # back in makefile dir
+				cp ${MAKEFILE}.orig ${MAKEFILE}
+				popd > /dev/null
+				exit 1
       fi
-
+			
       if [ "$dataset" = "small" ]; then 
           args=${args_small[$i]} 
       fi
