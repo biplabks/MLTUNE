@@ -65,6 +65,9 @@ while [ $# -gt 0 ]; do
     -s|--showregs)
       showregs=true
       ;;
+    --showspills)
+      showspills=true
+      ;;
     *)
       # unknown option
       if [ "$prog" = "" ]; then
@@ -192,11 +195,13 @@ function build {
       fi  
 
       (make 2>&1) > tmp
+
+      spills=`cat tmp | grep "spill" | awk '{print $5 + $9}'`
       regs=`cat tmp | grep "registers" | awk '{ print $5 }'`
-			if [ "${debug}" ]; then 
-				cp tmp regs.dbg
-			fi
-			
+      if [ "${debug}" ]; then 
+	  cp tmp regs.dbg
+      fi
+      
 
       if [ $ver = "cuda_base" ]; then 
           if [ $prog = "histo" ]; then
@@ -221,25 +226,29 @@ function build {
               regs=`echo $regs | awk '{print $1}'`
           fi
       fi
-
-			# deprecated (bundled with launch configuration)
-		  if [ "${showregs}" ]; then 
-			 	echo $regs
-			fi
+      
+      if [ "${showspills}" ]; then
+	  echo $spills
+      fi
+      
+      # deprecated (bundled with launch configuration)
+      if [ "${showregs}" ]; then 
+	  echo $regs
+      fi
 
       # notify if build failed 
       if [ ! -x ${prog} ]; then 
-				echo "FAIL: could not generate variant; make failed for $prog"
-				
-				if [ ${blocksize} != "default" ]; then
-					cp ${srcfile}.orig ${srcfile}
-				fi
-				popd > /dev/null
-        # back in makefile dir
-				cp ${MAKEFILE}.orig ${MAKEFILE}
-				popd > /dev/null
-				exit 1
-			fi
+	  echo "FAIL: could not generate variant; make failed for $prog"
+	  
+	  if [ ${blocksize} != "default" ]; then
+	      cp ${srcfile}.orig ${srcfile}
+	  fi
+	  popd > /dev/null
+          # back in makefile dir
+	  cp ${MAKEFILE}.orig ${MAKEFILE}
+	  popd > /dev/null
+	  exit 1
+      fi
 
       if [ "$dataset" = "small" ]; then 
           args=${args_small[$i]} 
