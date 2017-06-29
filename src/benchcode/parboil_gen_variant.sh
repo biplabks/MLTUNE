@@ -98,6 +98,9 @@ MAKEFILE="Makefile.conf"
 if [ "${maxreg}" = "" ]; then 
 	maxreg=default
 fi
+if [ "${ra_level}" = "" ]; then 
+	ra_level=default
+fi
 if [ "${blocksize}" = "" ]; then 
 	blocksize=default
 fi
@@ -144,9 +147,11 @@ function build {
   pushd ${MAKEFILE_DIR}  > /dev/null
   cp ${MAKEFILE} ${MAKEFILE}.orig
   
-	sed -i "s/RALEVEL=/RALEVEL=${ra_level}/" ${MAKEFILE}
-  if [ ${maxreg} != "default" ]; then
-    sed -i "s/REGCAP=/REGCAP=--maxrregcount=${maxreg}/" ${MAKEFILE}
+  if [ ${ra_level} != "default" ]; then
+ 			sed -i "s/RALEVEL=/RALEVEL=-mllvm -reg_control=${ra_level}/" ${MAKEFILE}
+	fi
+	if [ ${maxreg} != "default" ]; then
+    sed -i "s/REGCAP=/REGCAP=-Xcuda-ptxas --maxrregcount=${maxreg}/" ${MAKEFILE}
   fi
   if [ ${blocksize} != "default" ]; then
     sed -i "s/BLOCKPARAM=/BLOCKPARAM=-DML/" ${MAKEFILE}
@@ -193,11 +198,11 @@ function build {
 				#cp ${srcfile} ${srcfile}.orig
 				sed -i "s/__BLOCKSIZE0/${blocksize}/" ${srcfile}
       fi  
-
       (make 2>&1) > tmp
 
       spills=`cat tmp | grep "spill" | awk '{print $5 + $9}'`
       regs=`cat tmp | grep "registers" | awk '{ print $5 }'`
+
       if [ "${debug}" ]; then 
 				cp tmp regs.dbg
       fi
@@ -231,10 +236,6 @@ function build {
 				echo $spills
       fi
       
-      # deprecated (bundled with launch configuration)
-      if [ "${showregs}" ]; then 
-				echo $regs
-      fi
 
       # notify if build failed 
       if [ ! -x ${prog} ]; then 
@@ -246,8 +247,13 @@ function build {
 				popd > /dev/null
         # back in makefile dir
 				cp ${MAKEFILE}.orig ${MAKEFILE}
+				
 				popd > /dev/null
 				exit 1
+      else
+				if [ "${showregs}" ]; then 
+						echo $regs
+				fi
       fi
 			
       if [ "$dataset" = "small" ]; then 
@@ -332,7 +338,6 @@ function build {
 			
       # clean up and restore
       if [ ${blocksize} != "default" ]; then
-				cp ${srcfile} ${srcfile}.gen
 				cp ${srcfile}.orig ${srcfile}
       fi
       echo " " > results.dat #can cause check script errors if file is not reset to blank
@@ -343,6 +348,7 @@ function build {
   fi
 
   # back in makefile dir
+	cp ${MAKEFILE} ${MAKEFILE}.gen
   cp ${MAKEFILE}.orig ${MAKEFILE}
   popd > /dev/null
 }
