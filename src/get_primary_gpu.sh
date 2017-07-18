@@ -4,7 +4,7 @@ if [ $# -lt 1 ]; then
   echo "usage :"
   echo "    $0  <options> -- prog [ prog args ]"
   echo " Options "
-  echo -e "    -m |--metric\t  [time,pwr,memdiv] "
+  echo -e "    -m |--metric\t  [time,pwr,memdiv,ipc] "
   echo -e "    -k |--kernel\t  kernel name"
   echo "    prog = path to executable or script (for workloads)"
   echo "    prog args = arguments to program or script"
@@ -76,4 +76,13 @@ if [ ${metric} = "memdiv" ]; then
 	ld_div=`echo $ctrs | awk '{print $1}'`
 	st_div=`echo $ctrs | awk '{print $2}'`
 	echo ${ld_div},${st_div}
+fi
+
+if [ ${metric} = "ipc" ]; then 
+		if [ ${kernel} = "none" ]; then
+			ipc=`nvprof --metrics ipc $execstr 2>&1 | grep ipc | awk '{print $7}'`
+		else
+			ipc=`nvprof --metrics ipc $execstr 2>&1 | grep ${kernel} -A 1 | awk '{print $7}'`
+		fi
+		echo $ipc | awk '{print $1}'
 fi

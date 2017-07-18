@@ -1,1 +1,1 @@
-/home/aq10/code/MLTUNE/src/benchcode/parboil_cmd_gen.sh
+../src/benchcode/parboil_cmd_gen.sh

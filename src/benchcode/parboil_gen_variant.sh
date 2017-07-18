@@ -151,7 +151,8 @@ function build {
  			sed -i "s/RALEVEL=/RALEVEL=-mllvm -reg_control=${ra_level}/" ${MAKEFILE}
 	fi
 	if [ ${maxreg} != "default" ]; then
-    sed -i "s/REGCAP=/REGCAP=-Xcuda-ptxas --maxrregcount=${maxreg}/" ${MAKEFILE}
+#    sed -i "s/REGCAP=/REGCAP=-Xcuda-ptxas --maxrregcount=${maxreg}/" ${MAKEFILE} ### LLVM
+    sed -i "s/REGCAP=/REGCAP=--ptxas-options --maxrregcount=${maxreg}/" ${MAKEFILE}
   fi
   if [ ${blocksize} != "default" ]; then
     sed -i "s/BLOCKPARAM=/BLOCKPARAM=-DML/" ${MAKEFILE}
@@ -205,30 +206,37 @@ function build {
 
       if [ "${debug}" ]; then 
 				cp tmp regs.dbg
+				cp ${MAKEFILE} ${MAKEFILE}.gen
       fi
       
 
       if [ $ver = "cuda_base" ]; then 
           if [ $prog = "histo" ]; then
               regs=`echo $regs | awk '{print $3}'`
+              spills=`echo $spills | awk '{print $3}'`
           fi
           if [ $prog = "mri-gridding" ]; then
               regs=`echo $regs | awk '{print $2}'`
+              spills=`echo $spills | awk '{print $2}'`
           fi
-          if [ $prog = "sad" ]; then
+          if [ $prog = "sad" ] || [ $prog = "mri-q" ] || [ $prog = "track" ]; then
               regs=`echo $regs | awk '{print $1}'`
+              spills=`echo $spills | awk '{print $1}'`
           fi
-          if [ $prog = "track" ]; then
-              regs=`echo $regs | awk '{print $1}'`
-          fi
+          # if [ $prog = "track" ]; then
+          #     regs=`echo $regs | awk '{print $1}'`
+          #     spills=`echo $spills | awk '{print $1}'`
+          # fi
 					
       fi
       
       if [ $ver = "cuda" ]; then 
           if [ $prog = "mri-q" ] || [ $prog = "mri-gridding" ]; then
               regs=`echo $regs | awk '{print $2}'`
+              spills=`echo $spills | awk '{print $2}'`
           else
               regs=`echo $regs | awk '{print $1}'`
+              spills=`echo $spills | awk '{print $1}'`
           fi
       fi
       
@@ -282,27 +290,27 @@ function build {
 #				fi
 #      fi
 			
+			if [ $ver = "cuda" ]; then 
+					kernel=${kernels[$i]}
+			else 
+				kernel=${kernels_base[$i]}
+			fi
 			if [ "${perf}" ]; then
-				if [ ${perf} = "exec" ]; then 
-					get_primary_gpu.sh -m time -- ./${prog} -i $args 
-				fi
-				if [ ${perf} = "pwr" ]; then 
-					get_primary_gpu.sh -m pwr -- ./${prog} -i $args 
-				fi
-				if [ ${perf} = "memdiv" ]; then 
-					get_primary_gpu.sh -m memdiv -- ./${prog} -i $args 
-				fi
+#				if [ ${perf} = "time" ]; then 
+					get_primary_gpu.sh -m ${perf} -k ${kernel} -- ./${prog} -i $args 
+				# fi
+				# if [ ${perf} = "pwr" ]; then 
+				# 	get_primary_gpu.sh -m pwr -- ./${prog} -i $args 
+				# fi
+				# if [ ${perf} = "memdiv" ]; then 
+				# 	get_primary_gpu.sh -m memdiv -- ./${prog} -i $args 
+				# fi
 			fi
       if [ "${res}" = "FAIL" ]; then 
 				echo $res ": executable not valid" 
       fi
 			
 			if [ "${launch}" ] || [ "${check}" ]; then
-				if [ $ver = "cuda" ]; then 
-					kernel=${kernels[$i]}
-				else 
-					kernel=${kernels_base[$i]}
-				fi
         [ `which nvprof` ] || { echo "could not find nvprof in path. Existing..."; exit 1; }
         (nvprof --events threads_launched,sm_cta_launched ./${prog} -i $args  > $prog.out) 2> tmp
         if [ "${debug}" ]; then
