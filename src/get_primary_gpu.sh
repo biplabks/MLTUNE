@@ -81,8 +81,9 @@ fi
 if [ ${metric} = "ipc" ]; then 
 		if [ ${kernel} = "none" ]; then
 			ipc=`nvprof --metrics ipc $execstr 2>&1 | grep ipc | awk '{print $7}'`
+			echo $ipc | awk '{print $1}'
 		else
 			ipc=`nvprof --metrics ipc $execstr 2>&1 | grep ${kernel} -A 1 | awk '{print $7}'`
+			echo $ipc | awk '{print $NF}'
 		fi
-		echo $ipc | awk '{print $1}'
 fi
