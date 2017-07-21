@@ -47,18 +47,22 @@ fi
 
 if [ ${metric} = "time" ] || [ ${metric} = "pwr" ]; then 
 
-	(nvprof -u ms --system-profiling on $execstr > prog.out) 2> tmp
-
-	if [ "$kernel" = "none" ]; then 
-		time=`cat tmp | grep "Time(%)" -m 1 -A 2 2>&1 | tail -1 | awk '{print $2/($1/100)}'`
-	else 
-		time=`cat tmp | grep  ${kernel} | awk '{printf $2 " " $4}'`
+	if [ ${kernel} = "eps" ]; then 
+		time=`$execstr | grep "Kernel execution time" | awk '{print $4}'`
+	else
+		(nvprof -u ms --system-profiling on $execstr > prog.out) 2> tmp
+		
+		if [ "$kernel" = "none" ]; then 
+			time=`cat tmp | grep "Time(%)" -m 1 -A 2 2>&1 | tail -1 | awk '{print $2/($1/100)}'`
+		else 
+			time=`cat tmp | grep  ${kernel} | awk '{printf $2 " " $4}'`
+		fi
+		time=`echo $time | awk '{printf "%3.4f", $1}'`
+		
+		pwr=`cat tmp  | grep "Power" | awk '{print $4}'`
+		pwr=`echo $pwr | awk '{printf "%3.2f", $1/1000}'`
 	fi
-	time=`echo $time | awk '{printf "%3.2f", $1}'`
-	
-	pwr=`cat tmp  | grep "Power" | awk '{print $4}'`
-	pwr=`echo $pwr | awk '{printf "%3.2f", $1/1000}'`
-	
+
 	if [ ${metric} = "time" ]; then 
     echo $time 
 	fi

@@ -25,6 +25,10 @@ while [ $# -gt 0 ]; do
       maxreg="$2"
       shift 
       ;;
+		-i|--input)
+			input_index="$2"
+			shift
+			;;
     -a|--ra)
       ra_level="$2"
       shift 
@@ -36,6 +40,14 @@ while [ $# -gt 0 ]; do
       perf="$2"
 			shift
       ;;
+		--opts)
+			opts="$2"
+			shift
+			;;
+		--ptx_opts)
+			ptx_opts="$2"
+			shift
+			;;
     -g|--debug)
       debug=true
       ;;
@@ -95,6 +107,10 @@ MAKEFILE="Makefile.conf"
 [ -x ${LONESTAR_HOME} ] || { "unable to cd to Lonestar home directory; exiting ..." ; exit 1; }  
 
 
+[ "${opts}" ] || { opts="default"; }
+[ "${ptx_opts}" ] || { ptx_opts="default"; }
+[ "${input_index}" ] || { input_index=0; }
+
 if [ "${maxreg}" = "" ]; then 
 	maxreg=default
 fi
@@ -138,15 +154,31 @@ source lonestar_vardefs.sh ${input_dir}
 function build {
   i=$1
   prog=${progs[$i]}
-  prog_main=${progs_main[$i]}
+  algm=${progs_main[$i]}
+	if [ "$algm" = "bfs" ]; then 
+		algm_index=0
+	else
+		algm_index=1		
+	fi
   ver=$2
+	if [ $ver = "cuda" ]; then 
+		kernel=${kernels[$i]}
+	else 
+		kernel=${kernels_base[$i]}
+	fi
 
-  srcdir="${LONESTAR_HOME}/benchmarks/${prog_main}/src/$ver"
+  srcdir="${LONESTAR_HOME}/benchmarks/${algm}/src/$ver"
 
   pushd ${MAKEFILE_DIR}  > /dev/null
   cp ${MAKEFILE} ${MAKEFILE}.orig
   
 	sed -i "s/RALEVEL=/RALEVEL=${ra_level}/" ${MAKEFILE}
+  if [ ${opts} != "default" ]; then
+    sed -i "s/CC_OPTLEVEL=-O2/CC_OPTLEVEL=-O${opts}/" ${MAKEFILE}
+  fi
+  if [ ${ptx_opts} != "default" ]; then
+    sed -i "s/PTX_OPTLEVEL=-O2/PTX_OPTLEVEL=-O${ptx_opts}/" ${MAKEFILE}
+  fi
   if [ ${maxreg} != "default" ]; then
     sed -i "s/REGCAP=/REGCAP=--maxrregcount=${maxreg}/" ${MAKEFILE}
   fi
@@ -158,6 +190,7 @@ function build {
 		sed -i "s/LAUNCH=/LAUNCH=-DLAUNCH/" ${MAKEFILE}
 		sed -i "s/ML_MAX_THRDS_PER_BLK=/ML_MAX_THRDS_PER_BLK=-DML_MAX_THRDS_PER_BLK=${max_thrds}/" ${MAKEFILE}
 		sed -i "s/ML_MIN_BLKS_PER_MP=/ML_MIN_BLKS_PER_MP=-DML_MIN_BLKS_PER_MP=${min_blks}/" ${MAKEFILE}
+		cp ${MAKEFILE} ~/makefile.tmp
 	fi
 
   if [ -d  $srcdir ]; then 
@@ -166,23 +199,20 @@ function build {
 
       if [ ${blocksize} != "default" ]; then
 				case ${prog} in 
-					"cutcp") 
-						srcfile=cutoff.cu
+					"bfs") 
+						srcfile=bfs_ls.h
 						;;
-					"lbm") 
-						srcfile=${prog}.cu
+					"bfs-atomic") 
+						srcfile=bfs_topo_atomic.h
 						;;
-					"mri-gridding")
-						srcfile=CUDA_interface.cu
+					"bfs-wlc")
+						srcfile=bfs_worklistc.h
 						;;
-					"mri-q")
-						srcfile=computeQ.cu
+					"bfs-wla")
+						srcfile=bfs_worklista.h
 						;;
-					"sgemm"|"tpacf")
-						srcfile=${prog}_kernel.cu
-						;;
-					"spmv")
-						srcfile=gpu_info.cc
+					"bfs-wlw")
+						srcfile=bfs_worklistw.h
 						;;
 					*)
 						srcfile=main.cu
@@ -191,14 +221,14 @@ function build {
 				#commented out because we want to copy the src to src.orig only once, upon install
 				#otherwise the .orig will become corrupted if this .sh file terminates before restore
 				#and impact all future runs. Can be easily fixed, but users may not notice.
-				#cp ${srcfile} ${srcfile}.orig
+				cp ${srcfile} ${srcfile}.orig
 				sed -i "s/__BLOCKSIZE0/${blocksize}/" ${srcfile}
       fi  
 
       (make ${prog} 2>&1) > tmp
 
       spills=`cat tmp | grep "spill" | awk '{print $5 + $9}'`
-      regs=`cat tmp | grep "registers" | awk '{ print $5 }'`
+      regs=`cat tmp | grep ${kernel} -A 2 | grep "registers" | awk '{ print $5 }'`
       if [ "${debug}" ]; then 
 				cp tmp regs.dbg
       fi
@@ -217,7 +247,6 @@ function build {
           if [ $prog = "track" ]; then
               regs=`echo $regs | awk '{print $1}'`
           fi
-					
       fi
       
       if [ $ver = "cuda" ]; then 
@@ -251,79 +280,37 @@ function build {
 				exit 1
       fi
 			
-      if [ "$dataset" = "small" ]; then 
-          args=${args_small[$i]} 
-      fi
-      if [ "$dataset" = "medium" ];then
-          args=${args_medium[$i]}
-      fi
-      if [ "$dataset" = "large" ]; then 
-          args=${args_large[$i]}
-      fi
 
-			args=${input_dir}/maayan.gr
-				if [ $ver = "cuda" ]; then 
-					kernel=${kernels[$i]}
-				else 
-					kernel=${kernels_base[$i]}
-				fi
+			beg_file=`echo ${args[${algm_index},${input_index}]} | awk '{print $1}'`
+			csr_file=`echo ${args[${algm_index},${input_index}]} | awk '{print $2}'`
+ 		 infile="${input_dir}/${beg_file} ${input_dir}/${csr_file}"
+     if [ "${check}" ]; then 
+			 ./${prog} $infile  > $prog.out
+			 errors=`cat ${prog}.out | grep errors | awk '{print $5}' | awk -F "." '{print $1}'`
+			 if [ "${errors}" -gt 0 ]; then
+				 echo "FAIL : incorrect results" 
+			 fi
+		 fi
 
-	# bundled with launch
-#     if [ "${check}" ]; then 
-#				check_script="../../tools/compare-output"
-   				
-#				if [ ! -x ${check_script} ]; then 
-#					echo "FAIL: could not find check script, not validating results"
-#				else
-#					./${prog} -i $args  > $prog.out
-#					res=`${check_script} ${ref_output_dir}/${prog}/ref_${dataset}.dat result.dat 2> /dev/null`
-#					res=`echo $res | grep "Pass"`
-#					if [ ! "${res}" ]; then 
-#						res="FAIL"
-#					fi
-#				fi
-#      fi
-			
-			if [ "${perf}" ]; then
-					get_primary_gpu.sh -m ${perf} -k ${kernel} -- ./${prog} $args 
-			fi
-      if [ "${res}" = "FAIL" ]; then 
-				echo $res ": executable not valid" 
-      fi
-			
-			if [ "${launch}" ] || [ "${check}" ]; then
-        [ `which nvprof` ] || { echo "could not find nvprof in path. Existing..."; exit 1; }
-        (nvprof --events threads_launched,sm_cta_launched ./${prog} -i $args  > $prog.out) 2> tmp
-        if [ "${debug}" ]; then
-          cp tmp launch.dbg
-        fi
-
-        # check_script="../../tools/compare-output"
-				# if [ ! -x ${check_script} ]; then
-        #   echo "FAIL: could not find check script, not validating results"
-        # else
-        #   export PYTHONPATH="${PYTHONPATH}:${PARBOIL_HOME}/benchmarks/python"
-        #   res=`${check_script} ${ref_output_dir}/${prog}/ref_${dataset}.dat result.dat 2> /dev/null`
-        #   res=`echo $res | grep "Pass"`
-
-        #   if [ ! "${res}" ]; then
-        #     res="FAIL"
-        #   fi
-				# 	if [ "${res}" = "FAIL" ]; then
-        #     echo $res ": executable not valid" 
-				# 	fi
-					
-        #   if [ "${launch}" ]; then
-        #     geom=`cat tmp | grep "${kernel}" -A 2 | grep "launched" | awk '{print $NF}'`
-        #     thrds_per_block=`echo $geom | awk '{ printf "%5.0f", $1/$2 }'`
-        #     blocks_per_grid=`echo $geom | awk '{ print $2 }'`
-        #     echo $regs ${blocks_per_grid} ${thrds_per_block}
-        #   fi
-        # fi
-      fi
-#	fi
-
-
+		 if [ "${perf}" ]; then
+			 get_primary_gpu.sh -m ${perf} -k ${kernel} -- ./${prog} $infile
+		 fi
+     if [ "${res}" = "FAIL" ]; then 
+			 echo $res ": executable not valid" 
+     fi
+		 
+		 if [ "${launch}" ]; then
+       [ `which nvprof` ] || { echo "could not find nvprof in path. Existing..."; exit 1; }
+       (nvprof --events threads_launched,sm_cta_launched ./${prog} $infile  > $prog.out) 2> tmp
+       geom=`cat tmp | grep "${kernel}" -A 2 | grep "launched" | awk '{print $NF}'`
+       thrds_per_block=`echo $geom | awk '{ print $1/$2 }'`
+       blocks_per_grid=`echo $geom | awk '{ print $2 }'`
+       echo $blocks_per_grid $thrds_per_block
+			 
+       if [ "${debug}" ]; then
+         cp tmp launch.dbg
+       fi
+     fi
 			
       # clean up and restore
       if [ ${blocksize} != "default" ]; then
@@ -339,6 +326,7 @@ function build {
 
   # back in makefile dir
   cp ${MAKEFILE}.orig ${MAKEFILE}
+	cp ${MAKEFILE} ${MAKEFILE}.tmp
   popd > /dev/null
 }
 
