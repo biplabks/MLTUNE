@@ -155,12 +155,14 @@ function build {
   i=$1
   prog=${progs[$i]}
   algm=${progs_main[$i]}
+
 	if [ "$algm" = "bfs" ]; then 
 		algm_index=0
 	else
 		algm_index=1		
 	fi
   ver=$2
+
 	if [ $ver = "cuda" ]; then 
 		kernel=${kernels[$i]}
 	else 
@@ -214,6 +216,9 @@ function build {
 					"bfs-wlw")
 						srcfile=bfs_worklistw.h
 						;;
+					"eps")
+						srcfile=comm.h
+						;;
 					*)
 						srcfile=main.cu
 						;;
@@ -228,7 +233,11 @@ function build {
       (make ${prog} 2>&1) > tmp
 
       spills=`cat tmp | grep "spill" | awk '{print $5 + $9}'`
-      regs=`cat tmp | grep ${kernel} -A 2 | grep "registers" | awk '{ print $5 }'`
+			if [ ${kernel} = "eps" ]; then 
+				regs=`cat tmp | grep "registers" | awk '{ print $5 }'`
+			else
+				regs=`cat tmp | grep ${kernel} -A 2 | grep "registers" | awk '{ print $5 }'`
+			fi
       if [ "${debug}" ]; then 
 				cp tmp regs.dbg
       fi
@@ -280,10 +289,14 @@ function build {
 				exit 1
       fi
 			
-
-			beg_file=`echo ${args[${algm_index},${input_index}]} | awk '{print $1}'`
-			csr_file=`echo ${args[${algm_index},${input_index}]} | awk '{print $2}'`
- 		 infile="${input_dir}/${beg_file} ${input_dir}/${csr_file}"
+			
+			if [ $kernel = "eps" ]; then 
+				beg_file=`echo ${args_eps[${input_index}]} | awk '{print $1}'`
+				csr_file=`echo ${args_eps[${input_index}]} | awk '{print $2}'`
+ 				infile="${input_dir}/${beg_file} ${input_dir}/${csr_file}"
+			else
+ 			 	infile="${input_dir}/${args_bfs[${input_index}]}"
+			fi
      if [ "${check}" ]; then 
 			 ./${prog} $infile  > $prog.out
 			 errors=`cat ${prog}.out | grep errors | awk '{print $5}' | awk -F "." '{print $1}'`
@@ -293,7 +306,7 @@ function build {
 		 fi
 
 		 if [ "${perf}" ]; then
-			 get_primary_gpu.sh -m ${perf} -k ${kernel} -- ./${prog} $infile
+			 get_primary_lsg.sh -m ${perf} -k ${kernel} -- ./${prog} $infile
 		 fi
      if [ "${res}" = "FAIL" ]; then 
 			 echo $res ": executable not valid" 
@@ -302,7 +315,11 @@ function build {
 		 if [ "${launch}" ]; then
        [ `which nvprof` ] || { echo "could not find nvprof in path. Existing..."; exit 1; }
        (nvprof --events threads_launched,sm_cta_launched ./${prog} $infile  > $prog.out) 2> tmp
-       geom=`cat tmp | grep "${kernel}" -A 2 | grep "launched" | awk '{print $NF}'`
+			 if [ ${kernel} = "eps" ]; then 
+				 geom=`cat tmp | grep "THD_expand" -A 2 | grep "launched" | awk '{print $NF}'`
+			 else 
+				 geom=`cat tmp | grep "${kernel}" -A 2 | grep "launched" | awk '{print $NF}'`
+			 fi
        thrds_per_block=`echo $geom | awk '{ print $1/$2 }'`
        blocks_per_grid=`echo $geom | awk '{ print $2 }'`
        echo $blocks_per_grid $thrds_per_block

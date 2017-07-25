@@ -50,7 +50,9 @@ if [ ${metric} = "time" ] || [ ${metric} = "pwr" ]; then
 	if [ ${kernel} = "eps" ]; then 
 		time=`$execstr | grep "Kernel execution time" | awk '{print $4}'`
 	else
-		(nvprof -u ms --system-profiling on $execstr > prog.out) 2> tmp
+		time=`$execstr | grep "Kernel execution time" | awk '{print $4}'`
+
+		(nvprof -u ms --system-profiling on $execstr > prog.out)# 2> tmp
 		
 		if [ "$kernel" = "none" ]; then 
 			time=`cat tmp | grep "Time(%)" -m 1 -A 2 2>&1 | tail -1 | awk '{print $2/($1/100)}'`
