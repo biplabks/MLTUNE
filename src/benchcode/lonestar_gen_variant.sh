@@ -304,7 +304,7 @@ function build {
 				 echo "FAIL : incorrect results" 
 			 fi
 		 fi
-
+		 
 		 if [ "${perf}" ]; then
 			 get_primary_lsg.sh -m ${perf} -k ${kernel} -- ./${prog} $infile
 		 fi
