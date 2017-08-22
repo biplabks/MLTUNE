@@ -53,6 +53,7 @@ while [ $# -gt 0 ]; do
   shift # option(s) fully processed, proceed to next input argument
 done
 
+
 if [ $DEBUG ]; then 
   echo ${fts_file}
   echo $outpath
@@ -78,11 +79,13 @@ CUDATUNE_HOME=$HOME/code/cudatuner
 [ `which deviceQuery` ] || { echo "Could not find deviceQuery. Exiting..."; exit 1; }
 
 HOST=`hostname`
-DEVICE=`deviceQuery | grep "Device 0:" | awk '{print $4}' | sed 's/"//'`
-#DEVICE=K20c
+if [ $HOST = "ada.cs.txstate.edu" ]; then 
+		DEVICE=`deviceQuery | grep "Device 0:" | awk '{print $5}' | sed 's/(//' | sed 's/)//' | sed 's/"//'`
+else
+		DEVICE=`deviceQuery | grep "Device 0:" | awk '{print $4}' | sed 's/"//'`
+fi
 
 # if user didn't supply metrics file then measure all available 
-
 if [ "${fts_file}" = "" ]; then 
   fts_file=$CUDATUNE_HOME/info/metrics_${DEVICE}_${HOST}.txt
   [ -r ${fts_file} ] || { echo "No system metrics file found, generating new one."; gen_fts_file="true";}
@@ -120,30 +123,40 @@ measured_metrics=${prognames[0]}_metrics_names.txt
 
 rm -rf ${outfile} ${outfile_vals_only} ${measured_metrics}
 
+hdr=""
+while IFS='' read -r ft_line || [[ -n ${ft_line} ]]; do
+	if [ "$hdr" = "" ]; then
+		  hdr=${line}
+	else
+		hdr=${hdr}","${line}
+	fi
+done <  ${fts_file}
 
 if [ ! ${gen_fts_file} ]; then
-    
+    fts=`wc -l ${fts_file} | awk '{print $1}'`
     i=0
+		m=1
     while IFS='' read -r line || [[ -n $line ]]; do
         metrics[$i]=$line
         i=$(($i+1))
-
+				
         if [ $i -eq 4 ]; then
             i=0
             if [ ${kernels[0]} = "none" ]; then
-                (nvprof --print-gpu-trace --metrics ${metrics[0]},${metrics[1]},${metrics[2]},${metrics[3]} --devices 0 --csv\
-                     ${progs[0]} ${prog_args[0]}  > ${progs[0]}.out)  2>&1 | grep "Tesla" | head -1 > tmp
+                (nvprof --metrics ${metrics[0]},${metrics[1]},${metrics[2]},${metrics[3]} --devices 0 --csv\
+                     ${progs[0]} ${prog_args[0]}  > ${progs[0]}.out)  2>&1 | grep ${DEVICE} | head -1 > tmp
             else
-                (nvprof --print-gpu-trace --metrics ${metrics[0]},${metrics[1]},${metrics[2]},${metrics[3]} --devices 0 --csv\
-                     ${progs[0]} ${prog_args[0]} > ${progs[0]}.out)  2>&1 | grep "Tesla" | grep "${kernels[0]}" | head -1 > tmp
+                (nvprof --metrics ${metrics[0]},${metrics[1]},${metrics[2]},${metrics[3]} --devices 0 --csv\
+                     ${progs[0]} ${prog_args[0]} > ${progs[0]}.out)  2>&1 | grep ${DEVICE} | grep "${kernels[0]}"  > tmp
             fi
             
-            vals=`cat tmp | awk -F "," '{ first = NF-3; second = NF-2; third = NF-1; printf $first " "  $second " " $third " " $NF }'`
+            # vals=`cat tmp | awk -F "," '{ first = NF-3; second = NF-2; third = NF-1; printf $first " "  $second " " $third " " $NF }'`
+            vals=`cat tmp | awk -F "," '{ print $NF }'`
             j=0;
             isCategory=""
             for v in $vals; do
               if [ "${isCategory}" = "true" ]; then 
-                  v=${prev}" "${v}
+                  v=${prev}","${v}
                   isCategory="false"
               fi
               if [ "$v" = "\"Low" ] || [ "$v" = "\"Mid" ] || \
@@ -152,11 +165,17 @@ if [ ! ${gen_fts_file} ]; then
                   prev=$v
               else
                   if [ "$v" != "\"<OVERFLOW>\"" ] && [ "$v" != "\"<INVALID>\"" ]; then
-                    echo ${metrics[$j]} >> ${measured_metrics}
-                    echo $v  >> ${outfile_vals_only}
-                  fi
-                  j=$(($j+1))
-              fi
+										 if [ $m -lt $fts ]; then 
+											 echo -n ${metrics[$j]}"," >> ${measured_metrics}
+											 echo $v","  >> ${outfile_vals_only}
+										 else
+											 echo ${metrics[$j]} >> ${measured_metrics}
+											 echo $v  >> ${outfile_vals_only}
+										 fi
+									fi
+									j=$(($j+1))
+									m=$(($m+1))
+							fi
             done            
             cat tmp >> ${outfile}
             rm -rf tmp
@@ -166,19 +185,24 @@ if [ ! ${gen_fts_file} ]; then
     j=0
     while [ $j -lt $i ]; do
         if [ ${kernels[0]} = "none" ]; then
-            (nvprof  --print-gpu-trace --metrics ${metrics[$j]} --devices 0 --csv \
-                 ${progs[0]} ${prog_args[0]} > ${progs[0]}.out) 2>&1 |  grep "Tesla" | head -1 > tmp 
+            (nvprof --metrics ${metrics[$j]} --devices 0 --csv \
+                 ${progs[0]} ${prog_args[0]} > ${progs[0]}.out) 2>&1 |  grep ${DEVICE}  > tmp 
         else
-            (nvprof  --print-gpu-trace --metrics ${metrics[$j]} --devices 0 --csv \
-                 ${progs[0]} ${prog_args[0]} > ${progs[0]}.out)  2>&1 |  grep "Tesla"  | grep "${kernels[0]}" | head -1 > tmp 
+            (nvprof --metrics ${metrics[$j]} --devices 0 --csv \
+                 ${progs[0]} ${prog_args[0]} > ${progs[0]}.out)  2>&1 |  grep ${DEVICE}  | grep "${kernels[0]}"  > tmp 
         fi
             
         val=`cat tmp | awk -F "," '{ print $NF }'`
         if [ "$val" != "\"<OVERFLOW>\"" ] && [ "$val" != "\"<INVALID>\"" ]; then
-            echo ${metrics[$j]} >> ${measured_metrics}
-            echo $val >> ${outfile_vals_only}
-        fi
-
+						if [ $j -lt $(($i - 1)) ]; then 
+								echo -n ${metrics[$j]}"," >> ${measured_metrics}
+								echo $val"," >> ${outfile_vals_only}
+						else
+								echo ${metrics[$j]}  >> ${measured_metrics}
+								echo $val  >> ${outfile_vals_only}
+							
+						fi
+				fi
         cat tmp >> ${outfile}
         rm -rf tmp
 
@@ -189,7 +213,7 @@ else
                                        |  grep -v -E "Available|Device" > ${fts_file}
 fi
 
-
+echo $hdr
 if [ ${trim} ]; then
-  trim_gpu_metrics_file.sh ${outfile_vals_only} 
+  trim_gpu_metrics_file.sh ${outfile_vals_only}
 fi

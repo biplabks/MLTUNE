@@ -43,6 +43,14 @@ while [ $# -gt 0 ]; do
       dataset="$2"
       shift 
       ;;
+		--opts)
+			opts="$2"
+			shift
+			;;
+		--ptx_opts)
+			ptx_opts="$2"
+			shift
+			;;
     -b|--blocksize)
       blocksize="$2"
       shift 
@@ -94,6 +102,9 @@ MAKEFILE="Makefile.conf"
 
 [ -x ${PARBOIL_HOME} ] || { "unable to cd to Parboil home directory; exiting ..." ; exit 1; }  
 
+
+[ "${opts}" ] || { opts="default"; }
+[ "${ptx_opts}" ] || { ptx_opts="default"; }
 
 if [ "${maxreg}" = "" ]; then 
 	maxreg=default
@@ -147,6 +158,12 @@ function build {
   pushd ${MAKEFILE_DIR}  > /dev/null
   cp ${MAKEFILE} ${MAKEFILE}.orig
   
+  if [ ${opts} != "default" ]; then
+    sed -i "s/CC_OPTLEVEL=-O2/CC_OPTLEVEL=-O${opts}/" ${MAKEFILE}
+  fi
+  if [ ${ptx_opts} != "default" ]; then
+    sed -i "s/PTX_OPTLEVEL=-O2/PTX_OPTLEVEL=-O${ptx_opts}/" ${MAKEFILE}
+  fi
   if [ ${ra_level} != "default" ]; then
  			sed -i "s/RALEVEL=/RALEVEL=-mllvm -reg_control=${ra_level}/" ${MAKEFILE}
 	fi
@@ -309,19 +326,27 @@ function build {
       if [ "${res}" = "FAIL" ]; then 
 				echo $res ": executable not valid" 
       fi
+
+			if [ "${launch}" ]; then
+					if [ $blocksize == "default" ]; then
+							echo ${def_bs[$i]}
+					else
+						echo $blocksize
+					fi
+			fi
 			
-			if [ "${launch}" ] || [ "${check}" ]; then
-        [ `which nvprof` ] || { echo "could not find nvprof in path. Existing..."; exit 1; }
-        (nvprof --events threads_launched,sm_cta_launched ./${prog} -i $args  > $prog.out) 2> tmp
-        if [ "${debug}" ]; then
-          cp tmp launch.dbg
-        fi
+			if [ "${check}" ]; then
+        # [ `which nvprof` ] || { echo "could not find nvprof in path. Existing..."; exit 1; }
+        # (nvprof --events threads_launched,sm_cta_launched ./${prog} -i $args  > $prog.out) 2> tmp
+        # if [ "${debug}" ]; then
+        #   cp tmp launch.dbg
+        # fi
 
         check_script="../../tools/compare-output"
 				if [ ! -x ${check_script} ]; then
           echo "FAIL: could not find check script, not validating results"
         else
-          export PYTHONPATH="${PYTHONPATH}:${PARBOIL_HOME}/benchmarks/python"
+          export PYTHONPATH="${PYTHONPATH}:${PARBOIL_HOME}/common/python"
           res=`${check_script} ${ref_output_dir}/${prog}/ref_${dataset}.dat result.dat 2> /dev/null`
           res=`echo $res | grep "Pass"`
 
@@ -331,13 +356,12 @@ function build {
 					if [ "${res}" = "FAIL" ]; then
             echo $res ": executable not valid" 
 					fi
-					
-          if [ "${launch}" ]; then
-            geom=`cat tmp | grep "${kernel}" -A 2 | grep "launched" | awk '{print $NF}'`
-            thrds_per_block=`echo $geom | awk '{ printf "%5.0f", $1/$2 }'`
-            blocks_per_grid=`echo $geom | awk '{ print $2 }'`
-            echo $regs ${blocks_per_grid} ${thrds_per_block}
-          fi
+					# if [ "${launch}" ]; then
+          #   geom=`cat tmp | grep "${kernel}" -A 2 | grep "launched" | awk '{print $NF}'`
+          #   thrds_per_block=`echo $geom | awk '{ printf "%5.0f", $1/$2 }'`
+          #   blocks_per_grid=`echo $geom | awk '{ print $2 }'`
+          #   echo $regs ${blocks_per_grid} ${thrds_per_block}
+          # fi
         fi
       fi
 #	fi

@@ -12,7 +12,11 @@ m1=`echo $m1 | sed "s/\/s//g" | sed 's/\%//g' | sed 's/GB//g' | sed 's/MB//g' | 
 m1=`echo $m1 | sed 's/\"//g' | sed "s/(//g" | sed 's/)//g'`
 
 # remove category values 
-m1=`echo $m1 | sed 's/Idle\|Low\|Mid\|High//g'` 
+m1=`echo $m1 | sed 's/Idle,\|Low,\|Mid,\|High,//g'` 
+
+# remove spaces
+m1=`echo $m1 | sed 's/\ //g'`
 
 echo $m1
+
 
