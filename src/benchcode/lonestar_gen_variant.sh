@@ -120,6 +120,7 @@ fi
 if [ "${dataset}" = "" ]; then 
 	dataset=small
 fi
+
 if [ "${ver}" = "" ]; then 
 	ver="cuda_base"
 fi
@@ -149,7 +150,7 @@ if [ $DEBUG ]; then
 fi
 
 cd ${LONESTAR_HOME}
-source lonestar_vardefs.sh ${input_dir}
+source ${HOME}/code/MLTUNE/src/benchcode/lonestar_vardefs.sh ${input_dir}
 
 function build {
   i=$1
@@ -227,7 +228,7 @@ function build {
 				#otherwise the .orig will become corrupted if this .sh file terminates before restore
 				#and impact all future runs. Can be easily fixed, but users may not notice.
 				cp ${srcfile} ${srcfile}.orig
-				sed -i "s/__BLOCKSIZE0/${blocksize}/" ${srcfile}
+				sed -i "s/__BLOCKSIZE0/${blocksize}/g" ${srcfile}
       fi  
 
       (make ${prog} 2>&1) > tmp
@@ -290,23 +291,42 @@ function build {
       fi
 			
 			
+      if [ "$dataset" = "small" ]; then 
+          args=${args_small[$i]} 
+      fi
+      if [ "$dataset" = "medium" ];then
+          args=${args_medium[$i]}
+      fi
+      if [ "$dataset" = "large" ]; then 
+          args=${args_large[$i]}
+      fi
+
 			if [ $kernel = "eps" ]; then 
 				beg_file=`echo ${args_eps[${input_index}]} | awk '{print $1}'`
 				csr_file=`echo ${args_eps[${input_index}]} | awk '{print $2}'`
  				infile="${input_dir}/${beg_file} ${input_dir}/${csr_file}"
-			else
+			elif [ $kernel = "drelax" ]; then 
  			 	infile="${input_dir}/${args_bfs[${input_index}]}"
 			fi
-     if [ "${check}" ]; then 
-			 ./${prog} $infile  > $prog.out
-			 errors=`cat ${prog}.out | grep errors | awk '{print $5}' | awk -F "." '{print $1}'`
-			 if [ "${errors}" -gt 0 ]; then
-				 echo "FAIL : incorrect results" 
-			 fi
-		 fi
+
+			if [ "${check}" ]; then 
+					if [ $kernel = "eps" ] || [ $kernel = "drelax" ]; then 
+							./${prog} $infile  > $prog.out
+					else
+						./${prog} ${args}  > $prog.out
+					fi
+					errors=`cat ${prog}.out | grep errors | awk '{print $5}' | awk -F "." '{print $1}'`
+					if [ "${errors}" -gt 0 ]; then
+							echo "FAIL : incorrect results" 
+					fi
+			fi
 		 
 		 if [ "${perf}" ]; then
-			 get_primary_lsg.sh -m ${perf} -k ${kernel} -- ./${prog} $infile
+				 if [ $kernel = "eps" ] || [ $kernel = "drelax" ]; then 
+						 get_primary_lsg.sh -m ${perf} -k ${kernel} -- ./${prog} $infile
+				 else
+						 get_primary_lsg.sh -m ${perf} -k ${kernel} -- ./${prog} $args
+				 fi
 		 fi
      if [ "${res}" = "FAIL" ]; then 
 			 echo $res ": executable not valid" 
@@ -314,21 +334,26 @@ function build {
 		 
 		 if [ "${launch}" ]; then
        [ `which nvprof` ] || { echo "could not find nvprof in path. Existing..."; exit 1; }
-       (nvprof --events threads_launched,sm_cta_launched ./${prog} $infile  > $prog.out) 2> tmp
-			 if [ ${kernel} = "eps" ]; then 
-				 geom=`cat tmp | grep "THD_expand" -A 2 | grep "launched" | awk '{print $NF}'`
-			 else 
-				 geom=`cat tmp | grep "${kernel}" -A 2 | grep "launched" | awk '{print $NF}'`
-			 fi
-       thrds_per_block=`echo $geom | awk '{ print $1/$2 }'`
-       blocks_per_grid=`echo $geom | awk '{ print $2 }'`
-       echo $blocks_per_grid $thrds_per_block
-			 
-       if [ "${debug}" ]; then
-         cp tmp launch.dbg
-       fi
+				 if [ $kernel = "eps" ] || [ $kernel = "drelax" ]; then 
+						 (nvprof --events threads_launched,sm_cta_launched ./${prog} $infile  > $prog.out) 2> tmp
+				 else
+						 (nvprof --events threads_launched,sm_cta_launched ./${prog} $infile  > $prog.out) 2> tmp
+				 fi
+				 if [ ${kernel} = "eps" ]; then 
+						 geom=`cat tmp | grep "THD_expand" -A 2 | grep "launched" | awk '{print $NF}'`
+				 else 
+					 geom=`cat tmp | grep "${kernel}" -A 2 | grep "launched" | awk '{print $NF}'`
+				 fi
+
+				 thrds_per_block=`echo $geom | awk '{ print $1/$2 }'`
+				 blocks_per_grid=`echo $geom | awk '{ print $2 }'`
+				 echo $blocks_per_grid $thrds_per_block
+				 
+				 if [ "${debug}" ]; then
+						 cp tmp launch.dbg
+				 fi
      fi
-			
+		 
       # clean up and restore
       if [ ${blocksize} != "default" ]; then
 				cp ${srcfile} ${srcfile}.gen

@@ -47,17 +47,19 @@ fi
 
 if [ ${metric} = "time" ]; then 
 
-		time=`$execstr | grep "runtime" | awk '{print $4}'`
-
 		# Not using nvprof; getting runtime reported from source for consistency
-		# (nvprof -u ms --system-profiling on $execstr > prog.out) 2> tmp
-		# if [ "$kernel" = "none" ]; then 
-		# 	time=`cat tmp | grep "Time(%)" -m 1 -A 2 2>&1 | tail -1 | awk '{print $2/($1/100)}'`
-		# else 
-		# 	time=`cat tmp | grep  ${kernel} | awk '{printf $2 " " $4}'`
-		# fi
-		time=`echo $time | awk '{printf "%3.4f", $1}'`
-    echo $time 
+		if [ $kernel = "eps" ] || [ $kernel = "drelax" ]; then 
+				 time=`$execstr | grep "runtime" | awk '{print $4}'`
+		else
+			(nvprof -u ms --system-profiling on $execstr > prog.out) 2> tmp
+			if [ "$kernel" = "none" ]; then 
+					time=`cat tmp | grep "Time(%)" -m 1 -A 2 2>&1 | tail -1 | awk '{print $2/($1/100)}'`
+			else 
+				time=`cat tmp | grep  ${kernel} | awk '{printf $2 " " $4}'`
+			fi
+			time=`echo $time | awk '{printf "%3.4f", $1}'`
+		fi
+		echo $time 
 		
 fi
 

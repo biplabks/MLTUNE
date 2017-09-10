@@ -7,6 +7,9 @@ bfs_wlc=2
 bfs_wla=3
 bfs_wlw=4
 bfs_eps=5
+bh=6
+dmr=7
+mst=8
 
 # base algm enum
 bfs=0
@@ -19,6 +22,9 @@ progs[${bfs_wlc}]="bfs-wlc"
 progs[${bfs_wla}]="bfs-wla"
 progs[${bfs_wlw}]="bfs-wlw"
 progs[${bfs_eps}]="eps"
+progs[${bh}]="bh"
+progs[${dmr}]="dmr"
+progs[${mst}]="mst"
 
 # prog names 
 progs_main[$bfs]="bfs"
@@ -27,6 +33,9 @@ progs_main[${bfs_wlc}]="bfs"
 progs_main[${bfs_wla}]="bfs"
 progs_main[${bfs_wlw}]="bfs"
 progs_main[${bfs_eps}]="eps"
+progs_main[${bh}]="bh"
+progs_main[${dmr}]="dmr"
+progs_main[${mst}]="mst"
 
 # prog names 
 kernels_base[$bfs]="drelax"
@@ -35,7 +44,21 @@ kernels_base[${bfs_wlc}]="drelax"
 kernels_base[${bfs_wla}]="drelax"
 kernels_base[${bfs_wlw}]="drelax"
 kernels_base[${bfs_eps}]="eps"
+kernels_base[${bh}]="ForceCalculationKernel"
+kernels_base[${dmr}]="refine"
+kernels_base[${mst}]="dfindelemin2"
 
+args_small[${bh}]="30000 50 0"
+args_small[${dmr}]="${input_dir}/250k.2 20"
+args_small[${mst}]="${input_dir}/rmat12.sym.gr"
+
+args_medium[${bh}]="300000 10 0"
+args_medium[${dmr}]="${input_dir}/r1M 20"
+args_medium[${mst}]="${input_dir}/USA-road-d.FLA.sym.gr"
+
+args_large[${bh}]="3000000 2 0"
+args_large[${dmr}]="${input_dir}/r5M 12"
+args_large[${mst}]="${input_dir}/2d-2e20.sym.gr"
 
 args_bfs[0]=adjnoun_adjacency_adjacency.gr
 args_bfs[1]=as-skitter.gr
