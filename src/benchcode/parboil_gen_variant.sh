@@ -313,19 +313,11 @@ function build {
 				kernel=${kernels_base[$i]}
 			fi
 			if [ "${perf}" ]; then
-#				if [ ${perf} = "time" ]; then 
 					get_primary_gpu.sh -m ${perf} -k ${kernel} -- ./${prog} -i $args 
-				# fi
-				# if [ ${perf} = "pwr" ]; then 
-				# 	get_primary_gpu.sh -m pwr -- ./${prog} -i $args 
-				# fi
-				# if [ ${perf} = "memdiv" ]; then 
-				# 	get_primary_gpu.sh -m memdiv -- ./${prog} -i $args 
-				# fi
 			fi
-      if [ "${res}" = "FAIL" ]; then 
-				echo $res ": executable not valid" 
-      fi
+      # if [ "${res}" = "FAIL" ]; then 
+			# 	echo $res ": executable not valid" 
+      # fi
 
 			if [ "${launch}" ]; then
 					if [ $blocksize == "default" ]; then
@@ -347,15 +339,18 @@ function build {
           echo "FAIL: could not find check script, not validating results"
         else
           export PYTHONPATH="${PYTHONPATH}:${PARBOIL_HOME}/common/python"
+					./${prog} -i $args  &> $prog.out
           res=`${check_script} ${ref_output_dir}/${prog}/ref_${dataset}.dat result.dat 2> /dev/null`
           res=`echo $res | grep "Pass"`
 
           if [ ! "${res}" ]; then
             res="FAIL"
-          fi
-					if [ "${res}" = "FAIL" ]; then
-            echo $res ": executable not valid" 
+          else
+						res="PASS"
 					fi
+
+					echo $res
+
 					# if [ "${launch}" ]; then
           #   geom=`cat tmp | grep "${kernel}" -A 2 | grep "launched" | awk '{print $NF}'`
           #   thrds_per_block=`echo $geom | awk '{ printf "%5.0f", $1/$2 }'`
