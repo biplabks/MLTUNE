@@ -52,6 +52,7 @@ if [ ${metric} = "time" ]; then
 				 time=`$execstr | grep "runtime" | awk '{print $4}'`
 		else
 			(nvprof -u ms --system-profiling on $execstr > prog.out) 2> tmp
+			cat tmp
 			if [ "$kernel" = "none" ]; then 
 					time=`cat tmp | grep "Time(%)" -m 1 -A 2 2>&1 | tail -1 | awk '{print $2/($1/100)}'`
 			else 

@@ -146,7 +146,7 @@ if [ $DEBUG ]; then
 fi
 
 cd ${PARBOIL_HOME}
-source parboil_vardefs.sh ${input_dir}
+source ${HOME}/code/MLTUNE/src/benchcode/parboil_vardefs.sh ${input_dir}
 
 function build {
   i=$1
@@ -216,7 +216,7 @@ function build {
 				#cp ${srcfile} ${srcfile}.orig
 				sed -i "s/__BLOCKSIZE0/${blocksize}/" ${srcfile}
       fi  
-      (make 2>&1) > tmp
+      (make 2>&1)  > tmp 
 
       spills=`cat tmp | grep "spill" | awk '{print $5 + $9}'`
       regs=`cat tmp | grep "registers" | awk '{ print $5 }'`
@@ -230,6 +230,7 @@ function build {
       if [ $ver = "cuda_base" ]; then 
           if [ $prog = "histo" ]; then
               regs=`echo $regs | awk '{print $3}'`
+
               spills=`echo $spills | awk '{print $3}'`
           fi
           if [ $prog = "mri-gridding" ]; then
@@ -252,9 +253,13 @@ function build {
               regs=`echo $regs | awk '{print $2}'`
               spills=`echo $spills | awk '{print $2}'`
           else
+						if [ $prog = "histo" ]; then
+								regs=`echo $regs | awk '{print $1}'`
+						else
               regs=`echo $regs | awk '{print $1}'`
               spills=`echo $spills | awk '{print $1}'`
-          fi
+						fi
+					fi
       fi
       
       if [ "${showspills}" ]; then
@@ -312,6 +317,7 @@ function build {
 			else 
 				kernel=${kernels_base[$i]}
 			fi
+			
 			if [ "${perf}" ]; then
 					get_primary_gpu.sh -m ${perf} -k ${kernel} -- ./${prog} -i $args 
 			fi

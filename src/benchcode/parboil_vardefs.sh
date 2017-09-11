@@ -80,7 +80,7 @@ kernels_base[$vertexnorm]="vertex2normalKernel"
 # thread geometry
 kernels[$bfs]="BFS_in_GPU_kernel" 
 kernels[$cutcp]="cuda_cutoff_potential_lattice6overlap"
-kernels[$histo]="histo_main_kernel"
+kernels[$histo]="histo_final_kernel" # "histo_main_kernel"
 kernels[$lbm]="performStreamCollide_kernel"
 kernels[$mrig]="gridding_GPU"
 kernels[$mriq]="ComputeQ_GPU"
