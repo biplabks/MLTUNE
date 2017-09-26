@@ -1,0 +1,1 @@
+../src/benchcode/rdn_gen_variant.sh

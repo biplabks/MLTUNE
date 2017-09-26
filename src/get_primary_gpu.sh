@@ -49,13 +49,11 @@ if [ ${metric} = "time" ] || [ ${metric} = "pwr" ]; then
 
 		(nvprof -u ms --system-profiling on $execstr > prog.out) 2> tmp
 
-		cat tmp
 		if [ "$kernel" = "none" ]; then 
 			time=`cat tmp | grep "Time(%)" -m 1 -A 2 2>&1 | tail -1 | awk '{print $2/($1/100)}'`
 		else 
-			time=`cat tmp | grep  ${kernel} | awk '{printf $2 " " $4}'`
+			time=`cat tmp | grep  "${kernel}(" | awk '{printf $2 " " $4}'`
 		fi
-
 		time=`echo $time | awk '{printf "%3.4f", $1}'`
 		
 		pwr=`cat tmp  | grep "Power" | awk '{print $4}'`
@@ -89,5 +87,16 @@ if [ ${metric} = "ipc" ]; then
 		else
 			ipc=`nvprof --metrics ipc $execstr 2>&1 | grep ${kernel} -A 1 | awk '{print $7}'`
 			echo $ipc | awk '{print $NF}'
+		fi
+fi
+
+
+if [ ${metric} = "occupancy" ]; then 
+		if [ ${kernel} = "none" ]; then
+			occupancy=`nvprof --metrics achieved_occupancy $execstr 2>&1 | grep achieved_occupancy | awk '{print $7}'`
+			echo $occupancy | awk '{print $1}'
+		else
+			occupancy=`nvprof --metrics achieved_occupancy $execstr 2>&1 | grep ${kernel} -A 1 | awk '{print $7}'`
+			echo $occupancy | awk '{print $NF}'
 		fi
 fi

@@ -25,10 +25,6 @@ while [ $# -gt 0 ]; do
       maxreg="$2"
       shift 
       ;;
-		-i|--input)
-			input_index="$2"
-			shift
-			;;
     -a|--ra)
       ra_level="$2"
       shift 
@@ -40,6 +36,13 @@ while [ $# -gt 0 ]; do
       perf="$2"
 			shift
       ;;
+    -g|--debug)
+      debug=true
+      ;;
+    -d|--dataset)
+      dataset="$2"
+      shift 
+      ;;
 		--opts)
 			opts="$2"
 			shift
@@ -48,13 +51,6 @@ while [ $# -gt 0 ]; do
 			ptx_opts="$2"
 			shift
 			;;
-    -g|--debug)
-      debug=true
-      ;;
-    -d|--dataset)
-      dataset="$2"
-      shift 
-      ;;
     -b|--blocksize)
       blocksize="$2"
       shift 
@@ -97,22 +93,22 @@ done
 
 
 # enviornment specific variables; needs to be set at install time 
-LONESTAR_HOME=${HOME}/Experiments/Lonestar
-input_dir=${LONESTAR_HOME}/datasets
+RODINIA_HOME=$HOME/Experiments/Rodinia
+input_dir=${RODINIA_HOME}/datasets
 ref_output_dir=${input_dir}
 
-MAKEFILE_DIR=${LONESTAR_HOME}/benchmarks
+MAKEFILE_DIR=${RODINIA_HOME}/benchmarks
 MAKEFILE="Makefile.conf"
 
-[ -x ${LONESTAR_HOME} ] || { "unable to cd to Lonestar home directory; exiting ..." ; exit 1; }  
+[ -x ${RODINIA_HOME} ] || { "unable to cd to Rodinia home directory; exiting ..." ; exit 1; }  
 
 
 [ "${opts}" ] || { opts="default"; }
 [ "${ptx_opts}" ] || { ptx_opts="default"; }
-[ "${input_index}" ] || { input_index=0; }
+[ "${maxreg}" ] || { 	maxreg="default"; }
 
-if [ "${maxreg}" = "" ]; then 
-	maxreg=default
+if [ "${ra_level}" = "" ]; then 
+	ra_level=default
 fi
 if [ "${blocksize}" = "" ]; then 
 	blocksize=default
@@ -120,7 +116,6 @@ fi
 if [ "${dataset}" = "" ]; then 
 	dataset=small
 fi
-
 if [ "${ver}" = "" ]; then 
 	ver="cuda_base"
 fi
@@ -138,7 +133,6 @@ else
 	fi
 fi 
 
-#DEBUG=1
 if [ $DEBUG ]; then 
    echo $prog
    echo $ver
@@ -149,51 +143,40 @@ if [ $DEBUG ]; then
 	 exit 
 fi
 
-cd ${LONESTAR_HOME}
-source ${HOME}/code/MLTUNE/src/benchcode/lonestar_vardefs.sh ${input_dir}
+cd ${RODINIA_HOME}
+source ${HOME}/code/MLTUNE/src/benchcode/rdn_vardefs.sh ${input_dir}
 
 function build {
   i=$1
   prog=${progs[$i]}
-  algm=${progs_main[$i]}
-
-	if [ "$algm" = "bfs" ]; then 
-		algm_index=0
-	else
-		algm_index=1		
-	fi
   ver=$2
 
-	if [ $ver = "cuda" ]; then 
-		kernel=${kernels[$i]}
-	else 
-		kernel=${kernels_base[$i]}
-	fi
-
-  srcdir="${LONESTAR_HOME}/benchmarks/${algm}/src/$ver"
+  srcdir="${RODINIA_HOME}/benchmarks/$prog/src/$ver"
 
   pushd ${MAKEFILE_DIR}  > /dev/null
   cp ${MAKEFILE} ${MAKEFILE}.orig
   
-	sed -i "s/RALEVEL=/RALEVEL=${ra_level}/" ${MAKEFILE}
   if [ ${opts} != "default" ]; then
-    sed -i "s/CC_OPTLEVEL=-O3/CC_OPTLEVEL=-O${opts}/" ${MAKEFILE}
+    sed -i "s/CC_OPTLEVEL=-O2/CC_OPTLEVEL=-O${opts}/" ${MAKEFILE}
   fi
   if [ ${ptx_opts} != "default" ]; then
-    sed -i "s/PTX_OPTLEVEL=-O3/PTX_OPTLEVEL=-O${ptx_opts}/" ${MAKEFILE}
+    sed -i "s/PTX_OPTLEVEL=-O2/PTX_OPTLEVEL=-O${ptx_opts}/" ${MAKEFILE}
   fi
-  if [ ${maxreg} != "default" ]; then
-    sed -i "s/REGCAP=/REGCAP=--maxrregcount=${maxreg}/" ${MAKEFILE}
+  if [ ${ra_level} != "default" ]; then
+ 			sed -i "s/RALEVEL=/RALEVEL=-mllvm -reg_control=${ra_level}/" ${MAKEFILE}
+	fi
+	if [ ${maxreg} != "default" ]; then
+    sed -i "s/REGCAP=/REGCAP=--ptxas-options --maxrregcount=${maxreg}/" ${MAKEFILE}
   fi
   if [ ${blocksize} != "default" ]; then
     sed -i "s/BLOCKPARAM=/BLOCKPARAM=-DML/" ${MAKEFILE}
 	fi  
 
+	
   if [ ${max_thrds} != "default" ] || [ ${min_blks} != "default" ]; then 
 		sed -i "s/LAUNCH=/LAUNCH=-DLAUNCH/" ${MAKEFILE}
 		sed -i "s/ML_MAX_THRDS_PER_BLK=/ML_MAX_THRDS_PER_BLK=-DML_MAX_THRDS_PER_BLK=${max_thrds}/" ${MAKEFILE}
 		sed -i "s/ML_MIN_BLKS_PER_MP=/ML_MIN_BLKS_PER_MP=-DML_MIN_BLKS_PER_MP=${min_blks}/" ${MAKEFILE}
-		cp ${MAKEFILE} ~/makefile.tmp
 	fi
 
   if [ -d  $srcdir ]; then 
@@ -202,23 +185,23 @@ function build {
 
       if [ ${blocksize} != "default" ]; then
 				case ${prog} in 
-					"bfs") 
-						srcfile=bfs_ls.h
+					"cutcp") 
+						srcfile=cutoff.cu
 						;;
-					"bfs-atomic") 
-						srcfile=bfs_topo_atomic.h
+					"lbm") 
+						srcfile=${prog}.cu
 						;;
-					"bfs-wlc")
-						srcfile=bfs_worklistc.h
+					"mri-gridding")
+						srcfile=CUDA_interface.cu
 						;;
-					"bfs-wla")
-						srcfile=bfs_worklista.h
+					"mri-q")
+						srcfile=computeQ.cu
 						;;
-					"bfs-wlw")
-						srcfile=bfs_worklistw.h
+					"sgemm"|"tpacf")
+						srcfile=${prog}_kernel.cu
 						;;
-					"eps")
-						srcfile=comm.h
+					"spmv")
+						srcfile=gpu_info.cc
 						;;
 					*)
 						srcfile=main.cu
@@ -227,54 +210,60 @@ function build {
 				#commented out because we want to copy the src to src.orig only once, upon install
 				#otherwise the .orig will become corrupted if this .sh file terminates before restore
 				#and impact all future runs. Can be easily fixed, but users may not notice.
-				cp ${srcfile} ${srcfile}.orig
-				sed -i "s/__BLOCKSIZE0/${blocksize}/g" ${srcfile}
+				#cp ${srcfile} ${srcfile}.orig
+				sed -i "s/__BLOCKSIZE0/${blocksize}/" ${srcfile}
       fi  
-
-      (make ${prog} 2>&1) > tmp
+      (make 2>&1)  > tmp 
 
       spills=`cat tmp | grep "spill" | awk '{print $5 + $9}'`
-			if [ ${kernel} = "eps" ]; then 
-				regs=`cat tmp | grep "registers" | awk '{ print $5 }'`
-			else
-				regs=`cat tmp | grep ${kernel} -A 2 | grep "registers" | awk '{ print $5 }'`
-			fi
+      regs=`cat tmp | grep "registers" | awk '{ print $5 }'`
+
       if [ "${debug}" ]; then 
 				cp tmp regs.dbg
+				cp ${MAKEFILE} ${MAKEFILE}.gen
       fi
       
 
       if [ $ver = "cuda_base" ]; then 
           if [ $prog = "histo" ]; then
               regs=`echo $regs | awk '{print $3}'`
+              spills=`echo $spills | awk '{print $3}'`
           fi
           if [ $prog = "mri-gridding" ]; then
               regs=`echo $regs | awk '{print $2}'`
+              spills=`echo $spills | awk '{print $2}'`
           fi
-          if [ $prog = "sad" ]; then
+          if [ $prog = "sad" ] || [ $prog = "mri-q" ] || [ $prog = "track" ]; then
               regs=`echo $regs | awk '{print $1}'`
+              spills=`echo $spills | awk '{print $1}'`
           fi
-          if [ $prog = "track" ]; then
-              regs=`echo $regs | awk '{print $1}'`
-          fi
+          # if [ $prog = "track" ]; then
+          #     regs=`echo $regs | awk '{print $1}'`
+          #     spills=`echo $spills | awk '{print $1}'`
+          # fi
+					
+          regs=`echo $regs | awk '{print $1}'`
+          spills=`echo $spills | awk '{print $1}'`
       fi
       
       if [ $ver = "cuda" ]; then 
           if [ $prog = "mri-q" ] || [ $prog = "mri-gridding" ]; then
               regs=`echo $regs | awk '{print $2}'`
+              spills=`echo $spills | awk '{print $2}'`
           else
+						if [ $prog = "histo" ]; then
+								regs=`echo $regs | awk '{print $1}'`
+						else
               regs=`echo $regs | awk '{print $1}'`
-          fi
+              spills=`echo $spills | awk '{print $1}'`
+						fi
+					fi
       fi
       
       if [ "${showspills}" ]; then
 				echo $spills
       fi
       
-      # deprecated (bundled with launch configuration)
-      if [ "${showregs}" ]; then 
-				echo $regs
-      fi
 
       # notify if build failed 
       if [ ! -x ${prog} ]; then 
@@ -286,10 +275,14 @@ function build {
 				popd > /dev/null
         # back in makefile dir
 				cp ${MAKEFILE}.orig ${MAKEFILE}
+				
 				popd > /dev/null
 				exit 1
+      else
+				if [ "${showregs}" ]; then 
+						echo $regs
+				fi
       fi
-			
 			
       if [ "$dataset" = "small" ]; then 
           args=${args_small[$i]} 
@@ -301,65 +294,81 @@ function build {
           args=${args_large[$i]}
       fi
 
-			if [ $kernel = "eps" ]; then 
-				beg_file=`echo ${args_eps[${input_index}]} | awk '{print $1}'`
-				csr_file=`echo ${args_eps[${input_index}]} | awk '{print $2}'`
- 				infile="${input_dir}/${beg_file} ${input_dir}/${csr_file}"
-			elif [ $kernel = "drelax" ]; then 
- 			 	infile="${input_dir}/${args_bfs[${input_index}]}"
+	# bundled with launch
+#     if [ "${check}" ]; then 
+#				check_script="../../tools/compare-output"
+   				
+#				if [ ! -x ${check_script} ]; then 
+#					echo "FAIL: could not find check script, not validating results"
+#				else
+#					./${prog} -i $args  > $prog.out
+#					res=`${check_script} ${ref_output_dir}/${prog}/ref_${dataset}.dat result.dat 2> /dev/null`
+#					res=`echo $res | grep "Pass"`
+#					if [ ! "${res}" ]; then 
+#						res="FAIL"
+#					fi
+#				fi
+#      fi
+			
+			if [ $ver = "cuda" ]; then 
+					kernel=${kernels[$i]}
+			else 
+				kernel=${kernels_base[$i]}
+			fi
+			
+			if [ "${perf}" ]; then
+					get_primary_gpu.sh -m ${perf} -k ${kernel} -- ./${prog} $args 
 			fi
 
-			if [ "${check}" ]; then 
-					if [ $kernel = "eps" ] || [ $kernel = "drelax" ]; then 
-							./${prog} $infile  > $prog.out
+			if [ "${launch}" ]; then
+					if [ $blocksize == "default" ]; then
+							echo ${def_bs[$i]}
 					else
-						./${prog} ${args}  > $prog.out
-					fi
-					errors=`cat ${prog}.out | grep errors | awk '{print $5}' | awk -F "." '{print $1}'`
-					if [ "${errors}" -gt 0 ]; then
-							echo "FAIL : incorrect results" 
+						echo $blocksize
 					fi
 			fi
-		 
-		 if [ "${perf}" ]; then
-				 if [ $kernel = "eps" ] || [ $kernel = "drelax" ]; then 
-						 get_primary_lsg.sh -m ${perf} -k ${kernel} -- ./${prog} $infile
-				 else
-						 get_primary_lsg.sh -m ${perf} -k ${kernel} -- ./${prog} $args
-				 fi
-		 fi
-     if [ "${res}" = "FAIL" ]; then 
-			 echo $res ": executable not valid" 
-     fi
-		 
-		 if [ "${launch}" ]; then
-       [ `which nvprof` ] || { echo "could not find nvprof in path. Existing..."; exit 1; }
-				 if [ $kernel = "eps" ] || [ $kernel = "drelax" ]; then 
-						 (nvprof --events threads_launched,sm_cta_launched ./${prog} $infile  > $prog.out) 2> tmp
-				 else
-						 (nvprof --events threads_launched,sm_cta_launched ./${prog} $infile  > $prog.out) 2> tmp
-				 fi
-				 if [ ${kernel} = "eps" ]; then 
-						 geom=`cat tmp | grep "THD_expand" -A 2 | grep "launched" | awk '{print $NF}'`
-				 else 
-					 geom=`cat tmp | grep "${kernel}" -A 2 | grep "launched" | awk '{print $NF}'`
-				 fi
+			
+			if [ "${check}" ]; then
+        # [ `which nvprof` ] || { echo "could not find nvprof in path. Existing..."; exit 1; }
+        # (nvprof --events threads_launched,sm_cta_launched ./${prog} -i $args  > $prog.out) 2> tmp
+        # if [ "${debug}" ]; then
+        #   cp tmp launch.dbg
+        # fi
 
-				 thrds_per_block=`echo $geom | awk '{ print $1/$2 }'`
-				 blocks_per_grid=`echo $geom | awk '{ print $2 }'`
-				 echo $blocks_per_grid $thrds_per_block
-				 
-				 if [ "${debug}" ]; then
-						 cp tmp launch.dbg
-				 fi
-     fi
-		 
+        check_script="../../tools/compare-output"
+				if [ ! -x ${check_script} ]; then
+          echo "FAIL: could not find check script, not validating results"
+        else
+          export PYTHONPATH="${PYTHONPATH}:${RODINIA_HOME}/common/python"
+					./${prog} -i $args  &> $prog.out
+          res=`${check_script} ${ref_output_dir}/${prog}/ref_${dataset}.dat result.dat 2> /dev/null`
+          res=`echo $res | grep "Pass"`
+
+          if [ ! "${res}" ]; then
+            res="FAIL"
+          else
+						res="PASS"
+					fi
+
+					echo $res
+
+					# if [ "${launch}" ]; then
+          #   geom=`cat tmp | grep "${kernel}" -A 2 | grep "launched" | awk '{print $NF}'`
+          #   thrds_per_block=`echo $geom | awk '{ printf "%5.0f", $1/$2 }'`
+          #   blocks_per_grid=`echo $geom | awk '{ print $2 }'`
+          #   echo $regs ${blocks_per_grid} ${thrds_per_block}
+          # fi
+        fi
+      fi
+#	fi
+
+
+			
       # clean up and restore
       if [ ${blocksize} != "default" ]; then
-				cp ${srcfile} ${srcfile}.gen
 				cp ${srcfile}.orig ${srcfile}
       fi
-      echo " " > results.dat #can cause check script errors if file is not reset to blank
+			#      echo " " > results.dat #can cause check script errors if file is not reset to blank
       rm -rf tmp $prog.out
       popd > /dev/null
   else
@@ -367,11 +376,9 @@ function build {
   fi
 
   # back in makefile dir
+	cp ${MAKEFILE} ${MAKEFILE}.gen
   cp ${MAKEFILE}.orig ${MAKEFILE}
-	cp ${MAKEFILE} ${MAKEFILE}.tmp
   popd > /dev/null
 }
 
 build $prog $ver
-
-
