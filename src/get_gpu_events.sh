@@ -2,15 +2,15 @@
 
 function usage() {
   echo "usage :"                                                               
-  echo "    get_gpu_metrics.sh [OPTIONS] FILE"
-  echo "    Collect cuda performance metrics for CUDA kernels described in FILE"
+  echo "    get_gpu_events.sh [OPTIONS] FILE"
+  echo "    Collect cuda performance events for CUDA kernels described in FILE"
   echo "    Assumes all events are measurable (i.e., no error checking) "
   echo " "
   echo "        FILE is proglist file "
   echo "Options: "
   echo "      -o, --outpath DIR;  DIR is location of output file"
-  echo "      -t, --trim;  trim output, emit one row containing just metrics vals "
-  echo "      -i, --input FILE;  FILE is file containing list of metrics "
+  echo "      -t, --trim;  trim output, emit one row containing just events vals "
+  echo "      -i, --input FILE;  FILE is file containing list of events "
   echo ""
 }
 
@@ -85,12 +85,12 @@ else
 		DEVICE=`deviceQuery | grep "Device 0:" | awk '{print $4}' | sed 's/"//'`
 fi
 
-# if user didn't supply metrics file then measure all available 
+# if user didn't supply events file then measure all available 
 if [ "${fts_file}" = "" ]; then 
-  fts_file=$CUDATUNE_HOME/info/metrics_${DEVICE}_${HOST}.txt
-  [ -r ${fts_file} ] || { echo "No system metrics file found, generating new one."; gen_fts_file="true";}
+  fts_file=$CUDATUNE_HOME/info/events_${DEVICE}_${HOST}.txt
+  [ -r ${fts_file} ] || { echo "No system events file found, generating new one."; gen_fts_file="true";}
 else
-  [ -r ${fts_file} ] || { echo "Could not open metrics file: ${fts_file}. Exiting"; exit 0;}
+  [ -r ${fts_file} ] || { echo "Could not open events file: ${fts_file}. Exiting"; exit 0;}
 fi
 
 # read prog list : <kernel> <prog> <prog args>
@@ -117,11 +117,11 @@ if [ $DEBUG ]; then
   done
 fi
 
-outfile=metrics_${prognames[0]}_${DEVICE}_${HOST}.txt
-outfile_vals_only=${prognames[0]}_metrics_vals.txt
-measured_metrics=${prognames[0]}_metrics_names.txt
+outfile=events_${prognames[0]}_${DEVICE}_${HOST}.txt
+outfile_vals_only=${prognames[0]}_events_vals.txt
+measured_events=${prognames[0]}_events_names.txt
 
-rm -rf ${outfile} ${outfile_vals_only} ${measured_metrics}
+rm -rf ${outfile} ${outfile_vals_only} ${measured_events}
 
 hdr=""
 while IFS='' read -r ft_line || [[ -n ${ft_line} ]]; do
@@ -137,16 +137,16 @@ if [ ! ${gen_fts_file} ]; then
     i=0
 		m=1
     while IFS='' read -r line || [[ -n $line ]]; do
-        metrics[$i]=$line
+        events[$i]=$line
         i=$(($i+1))
 				
         if [ $i -eq 4 ]; then
             i=0
             if [ ${kernels[0]} = "none" ]; then
-                (nvprof --metrics ${metrics[0]},${metrics[1]},${metrics[2]},${metrics[3]} --devices 0 --csv\
+                (nvprof --events ${events[0]},${events[1]},${events[2]},${events[3]} --devices 0 --csv\
                      ${progs[0]} ${prog_args[0]}  > ${progs[0]}.out)  2>&1 | grep ${DEVICE} | head -1 > tmp
             else
-                (nvprof --metrics ${metrics[0]},${metrics[1]},${metrics[2]},${metrics[3]} --devices 0 --csv\
+                (nvprof --events ${events[0]},${events[1]},${events[2]},${events[3]} --devices 0 --csv\
                      ${progs[0]} ${prog_args[0]} > ${progs[0]}.out)  2>&1 | grep ${DEVICE} | grep "${kernels[0]}"  > tmp
             fi
             
@@ -166,10 +166,10 @@ if [ ! ${gen_fts_file} ]; then
               else
                   if [ "$v" != "\"<OVERFLOW>\"" ] && [ "$v" != "\"<INVALID>\"" ]; then
 										 if [ $m -lt $fts ]; then 
-											 echo -n ${metrics[$j]}"," >> ${measured_metrics}
+											 echo -n ${events[$j]}"," >> ${measured_events}
 											 echo $v","  >> ${outfile_vals_only}
 										 else
-											 echo ${metrics[$j]} >> ${measured_metrics}
+											 echo ${events[$j]} >> ${measured_events}
 											 echo $v  >> ${outfile_vals_only}
 										 fi
 									fi
@@ -185,20 +185,20 @@ if [ ! ${gen_fts_file} ]; then
     j=0
     while [ $j -lt $i ]; do
         if [ ${kernels[0]} = "none" ]; then
-            (nvprof --metrics ${metrics[$j]} --devices 0 --csv \
+            (nvprof --events ${events[$j]} --devices 0 --csv \
                  ${progs[0]} ${prog_args[0]} > ${progs[0]}.out) 2>&1 |  grep ${DEVICE}  > tmp 
         else
-            (nvprof --metrics ${metrics[$j]} --devices 0 --csv \
+            (nvprof --events ${events[$j]} --devices 0 --csv \
                  ${progs[0]} ${prog_args[0]} > ${progs[0]}.out)  2>&1 |  grep ${DEVICE}  | grep "${kernels[0]}"  > tmp 
         fi
             
         val=`cat tmp | awk -F "," '{ print $NF }'`
         if [ "$val" != "\"<OVERFLOW>\"" ] && [ "$val" != "\"<INVALID>\"" ]; then
 						if [ $j -lt $(($i - 1)) ]; then 
-								echo -n ${metrics[$j]}"," >> ${measured_metrics}
+								echo -n ${events[$j]}"," >> ${measured_events}
 								echo $val"," >> ${outfile_vals_only}
 						else
-								echo ${metrics[$j]}  >> ${measured_metrics}
+								echo ${events[$j]}  >> ${measured_events}
 								echo $val  >> ${outfile_vals_only}
 							
 						fi
@@ -209,11 +209,11 @@ if [ ! ${gen_fts_file} ]; then
         j=$(($j+1))
     done    
 else 
-    nvprof --query-metrics --devices 0 | grep ":" | awk -F ":" '{print $1}' | awk '{print $1}' \
+    nvprof --query-events --devices 0 | grep ":" | awk -F ":" '{print $1}' | awk '{print $1}' \
                                        |  grep -v -E "Available|Device" > ${fts_file}
 fi
 
 #echo $hdr
 if [ ${trim} ]; then
-  trim_gpu_metrics_file.sh ${outfile_vals_only}
+  trim_gpu_events_file.sh ${outfile_vals_only}
 fi
