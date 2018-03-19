@@ -4,7 +4,7 @@ if [ $# -lt 1 ]; then
   echo "usage :"
   echo "    $0  <options> -- prog [ prog args ]"
   echo " Options "
-  echo -e "    -m |--metric\t  [time,pwr,memdiv,ipc] "
+  echo -e "    -m |--metric\t  [time,pwr,memdiv,ipc,intensity] "
   echo -e "    -k |--kernel\t  kernel name"
   echo "    prog = path to executable or script (for workloads)"
   echo "    prog args = arguments to program or script"
@@ -90,6 +90,52 @@ if [ ${metric} = "ipc" ]; then
 		fi
 fi
 
+if [ ${metric} = "intensity" ]; then
+		# try single precision first
+		counter="flop_count_sp"
+		flop=`nvprof --metrics ${counter} $execstr 2>&1 | grep ${kernel} -A 1 | grep ${counter} | awk '{print $NF}'`		
+		
+		# if no SP count, try double precision
+		if [ "$flop" -eq 0 ]; then
+				counter="flop_count_dp"
+				flop=`nvprof --metrics ${counter} $execstr 2>&1 | grep ${kernel} -A 1 | grep ${counter} | awk '{print $NF}'`		
+				if [ "$flop" -eq 0 ]; then
+						counter="inst_executed"
+						flop=`nvprof --metrics ${counter} $execstr 2>&1 | grep ${kernel} -A 1 | grep ${counter} | awk '{print $NF}'`		
+				fi
+				if [ "$flop" -eq 0 ]; then
+						echo "not a floating-point application. Can only compute intensity of FP applications"
+						exit 0
+				fi
+		fi
+		data=`nvprof --print-gpu-trace $execstr 2>&1 | grep "HtoD\|DtoH" | awk '{print $8}'`
+		units="KB MB GB"
+		byte_convert_factor[0]="1000"
+		byte_convert_factor[1]="1000000"
+		byte_convert_factor[2]="1000000000"
+		
+		total=0
+		for d in $data; do
+			i=0
+			this_data=0
+			for u in $units; do
+				if [ `echo $d | grep "$u"` ]; then
+						this_data=`echo $d | sed 's/$u//' | awk -v val="${byte_convert_factor[$i]}" '{printf "%i", $1 * val}'`  
+				fi 
+				i=$(($i+1))
+			done
+			total=$((${this_data}+${total}))
+		done
+		data=$total
+		# adjust for measurement errors. nvprof under reports amount of data transferred
+		# when probing with print-gpu-trace HtoD and DtoH
+		# adjustment factor calculated with applications with known data transfer amount (i.e., dlbench)
+		# reports correct numbers with unified memory profiling
+		# should have a separate case to handle intensity for UM applications
+    #	 data=`echo $total | awk '{printf "%i", $1 + $1 * 0.0483789}'`
+		echo -n $flop","$data"," 
+		echo $flop $data  | awk '{printf "%3.2f\n", $1 / $2 }'
+fi
 
 if [ ${metric} = "occupancy" ]; then 
 		if [ ${kernel} = "none" ]; then
