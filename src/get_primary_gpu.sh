@@ -77,7 +77,7 @@ if [ ${metric} = "memdiv" ]; then
   ctrs=`nvprof --metrics gld_transactions_per_request,gst_transactions_per_request $execstr 2>&1 | grep "transactions_per_request" | awk '{print $NF}'`
 	ld_div=`echo $ctrs | awk '{print $1}'`
 	st_div=`echo $ctrs | awk '{print $2}'`
-	echo ${ld_div},${st_div}
+	echo ${ld_div} ${st_div} | awk '{printf "%3.2f,%3.2f\n", $1, $2 }'
 fi
 
 if [ ${metric} = "ipc" ]; then 
@@ -93,8 +93,11 @@ fi
 if [ ${metric} = "intensity" ]; then
 		# try single precision first
 		counter="flop_count_sp"
-		flop=`nvprof --metrics ${counter} $execstr 2>&1 | grep ${kernel} -A 1 | grep ${counter} | awk '{print $NF}'`		
-		
+		if [ $kernel = "none" ]; then 
+			flop=`nvprof --metrics ${counter} $execstr 2>&1 | grep ${counter} | awk '{print $NF}'`		
+		else
+			flop=`nvprof --metrics ${counter} $execstr 2>&1 | grep ${kernel} -A 1 | grep ${counter} | awk '{print $NF}'`		
+		fi
 		# if no SP count, try double precision
 		if [ "$flop" -eq 0 ]; then
 				counter="flop_count_dp"
@@ -110,9 +113,9 @@ if [ ${metric} = "intensity" ]; then
 		fi
 		data=`nvprof --print-gpu-trace $execstr 2>&1 | grep "HtoD\|DtoH" | awk '{print $8}'`
 		units="KB MB GB"
-		byte_convert_factor[0]="1000"
-		byte_convert_factor[1]="1000000"
-		byte_convert_factor[2]="1000000000"
+		byte_convert_factor[0]="1024"
+		byte_convert_factor[1]="1048576"
+		byte_convert_factor[2]="1073741824"
 		
 		total=0
 		for d in $data; do
