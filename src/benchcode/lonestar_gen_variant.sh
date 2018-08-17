@@ -74,6 +74,12 @@ while [ $# -gt 0 ]; do
     -l|--launch)
       launch=true
       ;;
+    --managed)
+      placement="managed"
+      ;;
+    --embed)
+      embed=true
+      ;;
     -s|--showregs)
       showregs=true
       ;;
@@ -108,6 +114,7 @@ MAKEFILE="Makefile.conf"
 
 
 [ "${opts}" ] || { opts="default"; }
+[ "${placement}" ] || { placement="copy"; }
 [ "${ptx_opts}" ] || { ptx_opts="default"; }
 [ "${input_index}" ] || { input_index=0; }
 
@@ -189,6 +196,12 @@ function build {
     sed -i "s/BLOCKPARAM=/BLOCKPARAM=-DML/" ${MAKEFILE}
 	fi  
 
+	if [ "${embed}" ]; then 
+		sed -i "s/TILED=/TILED=-DTILED/" ${MAKEFILE}
+	fi
+	if [ ${placement} = "managed" ]; then
+		sed -i "s/MANAGED=/MANAGED=-DMANAGED/" ${MAKEFILE}
+	fi
   if [ ${max_thrds} != "default" ] || [ ${min_blks} != "default" ]; then 
 		sed -i "s/LAUNCH=/LAUNCH=-DLAUNCH/" ${MAKEFILE}
 		sed -i "s/ML_MAX_THRDS_PER_BLK=/ML_MAX_THRDS_PER_BLK=-DML_MAX_THRDS_PER_BLK=${max_thrds}/" ${MAKEFILE}
