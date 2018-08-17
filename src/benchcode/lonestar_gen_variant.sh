@@ -1,13 +1,15 @@
 #!/bin/bash
 
-if [ $# -lt 1 ]; then
-    echo "usage: "
-    echo "  ./parboil_gen_variant.sh <options> prog_num"
-		echo "builds a parboil executable with specified regs, blocksizes etc."
+
+if [ $# -lt 1 ] || [ $1 == "--help" ]; then
+    echo "Usage: "
+    echo "       lone_star_gen_variant.sh <options> prog_num"
+		echo "Script to build lonestar executables with specified regs, blocksizes etc."
 		echo ""
     echo "Options: "
     echo "      -v, --verify; check output agains reference"
-    echo "      -t, --time; report execution time"
+    echo "      -p, --profile <metric>; profile the code"
+		echo "      -i, --input <index>; input graph index; input graphs are numbered from 0-32 (see lonestar_vardefs.sh)"
 		echo "      -l, --launch, get launch configuration"
 		echo "      -s, --showregs, show register allocation"
     echo "      -c, --codetype [cuda_base, cuda]"
@@ -37,7 +39,7 @@ while [ $# -gt 0 ]; do
       check=true
       ;;
     -p|--profile)
-      perf="$2"
+      profile=$2
 			shift
       ;;
 		--opts)
@@ -334,12 +336,15 @@ function build {
 					fi
 			fi
 		 
-		 if [ "${perf}" ]; then
-				 if [ $kernel = "eps" ] || [ $kernel = "drelax" ]; then 
-						 get_primary_lsg.sh -m ${perf} -k ${kernel} -- ./${prog} $infile
-				 else
-						 get_primary_lsg.sh -m ${perf} -k ${kernel} -- ./${prog} $args
-				 fi
+		 if [ "${profile}" ]; then
+			 if [ $verbos ]; then
+			   echo "profiling $prog ..." 
+			 fi
+			 if [ $kernel = "eps" ] || [ $kernel = "drelax" ]; then 
+				 get_primary_lsg.sh -m ${profile} -k ${kernel} -- ./${prog} $infile
+			 else
+				 get_primary_lsg.sh -m ${profile} -k ${kernel} -- ./${prog} $args
+			 fi
 		 fi
      if [ "${res}" = "FAIL" ]; then 
 			 echo $res ": executable not valid" 
