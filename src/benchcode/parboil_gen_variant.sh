@@ -1,21 +1,42 @@
 #!/bin/bash
 
-if [ $# -lt 1 ]; then
-    echo "usage: "
-    echo "  ./parboil_gen_variant.sh <options> prog_num"
-		echo "builds a parboil executable with specified regs, blocksizes etc."
-		echo ""
-    echo "Options: "
-    echo "      -v, --verify; check output agains reference"
-    echo "      -t, --time; report execution time"
-		echo "      -l, --launch, get launch configuration"
-		echo "      -s, --showregs, show register allocation"
-    echo "      -c, --codetype [cuda_base, cuda]"
-    echo "      -r, --regs REGS; REGS legal values, {16..512}" 
-    echo "      -d, --dataset [small, medium, large]"
-    echo "      -b, --blocksize BLOCKSIZE; BLOCKSIZE legal values {32..1024}" 
-		echo "      -g, --debug"
-    exit 0
+
+function usage() {
+/bin/cat 2>&1 <<"EOF"
+     
+		Builds, execute and profile parboil benchmarks with custom configuration (optimization level, launch bounds etc)
+
+    Usage: parboil_gen_variant.sh [options] prog_num"
+    
+    Options:
+       --help              print this help message
+       -v, --verbose       verbose mode  
+       -g, --debug         debug mode
+       -v, --verify        check output against reference
+       -t, --time          report execution time
+       -l, --launch        show kernel launch configuration
+       -s, --showregs      show number of registers allocated 
+       --show_spills       show number of register spills 
+
+    Optionss with values:
+       -c, --codetype <VERSION>      specify version of code; <VERSION> = cuda_base, cuda
+       -r, --regs <REGS>             maximum numbers of registers to allocate for each kernel; <REGS> = {16..512} 
+       -d, --dataset <SIZE>          data set size; <DATA> = small, medium, large
+       -b, --blocksize <BLOCKSIZE>   specify thread block size; <BLOCKSIZE> = {32..1024}
+       --opts <LEVEL>                specify compiler optimization level; <LEVEL> is 0,1,2 or 3
+       --ptx_opts <LEVEL>            specify PTX optimization level; <LEVEL> is 0,1,2 or 3
+       -a, --ra  <LEVEL>             specify register allocation aggresiveness level; <LEVEL> is -1, 0, 1,2
+ 
+    Examples:
+       parboil_gen_variant.sh -s -b 256  0    // build benchmark 0 with a blocksize 256; show registers
+
+EOF
+	exit 1
+}
+
+if [ $# -lt 1 ] || [ "$1" == "--help" ]; then
+	usage
+  exit 0
 fi
 
 while [ $# -gt 0 ]; do
@@ -166,10 +187,12 @@ function build {
   fi
   if [ ${ra_level} != "default" ]; then
  			sed -i "s/RALEVEL=/RALEVEL=-mllvm -reg_control=${ra_level}/" ${MAKEFILE}
+			cp ${MAKEFILE} ${MAKEFILE}.gen
+
 	fi
 	if [ ${maxreg} != "default" ]; then
-#    sed -i "s/REGCAP=/REGCAP=-Xcuda-ptxas --maxrregcount=${maxreg}/" ${MAKEFILE} ### LLVM
-    sed -i "s/REGCAP=/REGCAP=--ptxas-options --maxrregcount=${maxreg}/" ${MAKEFILE}
+    sed -i "s/REGCAP=/REGCAP=-Xcuda-ptxas --maxrregcount=${maxreg}/" ${MAKEFILE} ### LLVM
+#    sed -i "s/REGCAP=/REGCAP=--ptxas-options --maxrregcount=${maxreg}/" ${MAKEFILE}
   fi
   if [ ${blocksize} != "default" ]; then
     sed -i "s/BLOCKPARAM=/BLOCKPARAM=-DML/" ${MAKEFILE}

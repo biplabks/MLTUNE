@@ -23,6 +23,9 @@ while [ $# -gt 0 ]; do
       kernel="$2"
       shift # option has parameter
       ;;
+		--keep)
+      keep=true
+      ;;
     --)
       shift;
       execstr="$@"
@@ -47,16 +50,16 @@ fi
 
 if [ ${metric} = "time" ] || [ ${metric} = "pwr" ]; then 
 
-		(nvprof -u ms --system-profiling on $execstr > prog.out) 2> tmp
+		(nvprof -u ms --system-profiling on  $execstr > prog.out) 2> tmp
 
 		if [ "$kernel" = "none" ]; then 
 			time=`cat tmp | grep "Time(%)" -m 1 -A 2 2>&1 | tail -1 | awk '{print $2/($1/100)}'`
 		else 
 			time=`cat tmp | grep  "${kernel}(" | awk '{printf $2 " " $4}'`
 		fi
-		time=`echo $time | awk '{printf "%3.4f", $1}'`
+		time=`echo $time | awk '{printf "%3.3f", $1}'`
 		
-		pwr=`cat tmp  | grep "Power" | awk '{print $4}'`
+		pwr=`cat tmp  | grep "Power" | awk '{print $6}'`
 		pwr=`echo $pwr | awk '{printf "%3.2f", $1/1000}'`
 fi
 
@@ -69,8 +72,9 @@ if [ ${metric} = "pwr" ]; then
 fi
 
 # clean up 
-rm -rf tmp prog.out
-
+if [ ! "$keep" ]; then 
+	rm -rf tmp prog.out
+fi
 
 
 if [ ${metric} = "memdiv" ]; then 
@@ -83,10 +87,10 @@ fi
 if [ ${metric} = "ipc" ]; then 
 		if [ ${kernel} = "none" ]; then
 			ipc=`nvprof --metrics ipc $execstr 2>&1 | grep ipc | awk '{print $7}'`
-			echo $ipc | awk '{print $1}'
+			echo $ipc | awk '{printf "%3.3f", $1}'
 		else
 			ipc=`nvprof --metrics ipc $execstr 2>&1 | grep ${kernel} -A 1 | awk '{print $7}'`
-			echo $ipc | awk '{print $NF}'
+			echo $ipc | awk '{printf "%3.3f", $NF}'
 		fi
 fi
 
