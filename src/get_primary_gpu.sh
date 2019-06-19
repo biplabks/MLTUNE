@@ -1,5 +1,32 @@
 #!/bin/bash
 
+function usage() {
+/bin/cat 2>&1 <<"EOF"
+     
+Usage:  get_primary_gpu.sh [ OPTIONS ] -- prog [ prog args ]
+
+Options: 
+   --help            print this help message
+   -a        run benchmark with all available input sets 
+
+Optionss with values:
+
+   -m, --metric <metric>    performance <metric> to collect; options are time,pwr,memvid,ipc,arithmetic intensity
+   -k, --kernel <kernel>    <kernel> to profile
+   -b <bench>      <bench> is a Hetero-Mark executable
+Examples:
+
+   ./get_primary_gpu.sh -m pwr -k matrix_multiply -- mm 1000  
+
+EOF
+	exit 1
+}
+
+if [ "$1" = "--help" ]; then
+	usage
+fi
+
+
 if [ $# -lt 1 ]; then
   echo "usage :"
   echo "    $0  <options> -- prog [ prog args ]"

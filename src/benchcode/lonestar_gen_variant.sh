@@ -27,6 +27,10 @@ while [ $# -gt 0 ]; do
       maxreg="$2"
       shift 
       ;;
+    --reps)
+      reps="$2"
+      shift 
+      ;;
 		-i|--input)
 			input_index="$2"
 			shift
@@ -39,7 +43,7 @@ while [ $# -gt 0 ]; do
       check=true
       ;;
     -p|--profile)
-      profile=$2
+      profile="$2"
 			shift
       ;;
 		--opts)
@@ -76,8 +80,9 @@ while [ $# -gt 0 ]; do
     -l|--launch)
       launch=true
       ;;
-    --managed)
-      placement="managed"
+    --mem)
+      placement="$2"
+			shift
       ;;
     --embed)
       embed=true
@@ -116,7 +121,7 @@ MAKEFILE="Makefile.conf"
 
 
 [ "${opts}" ] || { opts="default"; }
-[ "${placement}" ] || { placement="copy"; }
+[ "${placement}" ] || { placement="dev"; }
 [ "${ptx_opts}" ] || { ptx_opts="default"; }
 [ "${input_index}" ] || { input_index=0; }
 
@@ -182,6 +187,8 @@ function build {
   srcdir="${LONESTAR_HOME}/benchmarks/${algm}/src/$ver"
 
   pushd ${MAKEFILE_DIR}  > /dev/null
+
+	# create copy of original makefile 
   cp ${MAKEFILE} ${MAKEFILE}.orig
   
 	sed -i "s/RALEVEL=/RALEVEL=${ra_level}/" ${MAKEFILE}
@@ -201,9 +208,26 @@ function build {
 	if [ "${embed}" ]; then 
 		sed -i "s/TILED=/TILED=-DTILED/" ${MAKEFILE}
 	fi
-	if [ ${placement} = "managed" ]; then
-		sed -i "s/MANAGED=/MANAGED=-DMANAGED/" ${MAKEFILE}
+
+	#
+	# PLACEMENT
+	# 
+	if [ ${placement} = "host" ]; then
+		sed -i "s/HOST=/HOST=-DHOST/" ${MAKEFILE}
 	fi
+	if [ ${placement} = "in" ]; then
+		sed -i "s/IN=/IN=-DIN/" ${MAKEFILE}
+	fi
+	if [ ${placement} = "out" ]; then
+		sed -i "s/OUT=/OUT=-DOUT/" ${MAKEFILE}
+	fi
+	if [ ${placement} = "select" ]; then
+		sed -i "s/SELECT=/SELECT=-DSELECT/" ${MAKEFILE}
+	fi
+	if [ ${placement} = "dev" ]; then
+		sed -i "s/DEV=/DEV=-DDEV/" ${MAKEFILE}
+	fi
+
   if [ ${max_thrds} != "default" ] || [ ${min_blks} != "default" ]; then 
 		sed -i "s/LAUNCH=/LAUNCH=-DLAUNCH/" ${MAKEFILE}
 		sed -i "s/ML_MAX_THRDS_PER_BLK=/ML_MAX_THRDS_PER_BLK=-DML_MAX_THRDS_PER_BLK=${max_thrds}/" ${MAKEFILE}
@@ -336,8 +360,12 @@ function build {
 					fi
 			fi
 		 
-		 if [ "${profile}" ]; then
-			 if [ $verbos ]; then
+			
+			if [ "${profile}" = "um" ]; then
+					um_profiler.sh ./${prog} ${infile} ${kernel} ${reps}
+			fi
+			if [ "${profile}" ]; then
+			 if [ $verbose ]; then
 			   echo "profiling $prog ..." 
 			 fi
 			 if [ $kernel = "eps" ] || [ $kernel = "drelax" ]; then 
@@ -384,9 +412,10 @@ function build {
       echo "FAIL: $ver not found for prog $prog" 
   fi
 
-  # back in makefile dir
-  cp ${MAKEFILE}.orig ${MAKEFILE}
 	cp ${MAKEFILE} ${MAKEFILE}.tmp
+
+  # restore original makefile 
+  cp ${MAKEFILE}.orig ${MAKEFILE}
   popd > /dev/null
 }
 
