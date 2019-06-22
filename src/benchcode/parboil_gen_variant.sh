@@ -191,8 +191,8 @@ function build {
 
 	fi
 	if [ ${maxreg} != "default" ]; then
-    sed -i "s/REGCAP=/REGCAP=-Xcuda-ptxas --maxrregcount=${maxreg}/" ${MAKEFILE} ### LLVM
-#    sed -i "s/REGCAP=/REGCAP=--ptxas-options --maxrregcount=${maxreg}/" ${MAKEFILE}
+#    sed -i "s/REGCAP=/REGCAP=-Xcuda-ptxas --maxrregcount=${maxreg}/" ${MAKEFILE} ### LLVM
+    sed -i "s/REGCAP=/REGCAP=--ptxas-options --maxrregcount=${maxreg}/" ${MAKEFILE}
   fi
   if [ ${blocksize} != "default" ]; then
     sed -i "s/BLOCKPARAM=/BLOCKPARAM=-DML/" ${MAKEFILE}

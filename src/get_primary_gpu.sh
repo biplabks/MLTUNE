@@ -78,11 +78,10 @@ fi
 if [ ${metric} = "time" ] || [ ${metric} = "pwr" ]; then 
 
 		(nvprof -u ms --system-profiling on  $execstr > prog.out) 2> tmp
-
 		if [ "$kernel" = "none" ]; then 
 			time=`cat tmp | grep "Time(%)" -m 1 -A 2 2>&1 | tail -1 | awk '{print $2/($1/100)}'`
 		else 
-			time=`cat tmp | grep  "${kernel}(" | awk '{printf $2 " " $4}'`
+			time=`cat tmp | grep  "${kernel}(" | awk '{printf $4}'`
 		fi
 		time=`echo $time | awk '{printf "%3.3f", $1}'`
 		
