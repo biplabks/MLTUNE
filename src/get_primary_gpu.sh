@@ -113,10 +113,10 @@ fi
 if [ ${metric} = "ipc" ]; then 
 		if [ ${kernel} = "none" ]; then
 			ipc=`nvprof --metrics ipc $execstr 2>&1 | grep ipc | awk '{print $7}'`
-			echo $ipc | awk '{printf "%3.3f", $1}'
+			echo $ipc | awk '{printf "%3.3f\n", $1}'
 		else
 			ipc=`nvprof --metrics ipc $execstr 2>&1 | grep ${kernel} -A 1 | awk '{print $7}'`
-			echo $ipc | awk '{printf "%3.3f", $NF}'
+			echo $ipc | awk '{printf "%3.3f\n", $NF}'
 		fi
 fi
 

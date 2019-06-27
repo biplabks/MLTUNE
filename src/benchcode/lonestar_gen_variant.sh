@@ -111,7 +111,8 @@ done
 
 # enviornment specific variables; needs to be set at install time 
 LONESTAR_HOME=${HOME}/Experiments/Lonestar
-input_dir=${LONESTAR_HOME}/datasets
+DATA_DIR=/usr/local/datasets/graphs
+input_dir=${DATA_DIR}
 ref_output_dir=${input_dir}
 
 MAKEFILE_DIR=${LONESTAR_HOME}/benchmarks
@@ -270,7 +271,7 @@ function build {
 				sed -i "s/__BLOCKSIZE0/${blocksize}/g" ${srcfile}
       fi  
 
-      (make ${prog} 2>&1) > tmp
+      (make ${prog} 2>&1)  > tmp
 
       spills=`cat tmp | grep "spill" | awk '{print $5 + $9}'`
 			if [ ${kernel} = "eps" ]; then 
@@ -369,7 +370,7 @@ function build {
 			   echo "profiling $prog ..." 
 			 fi
 			 if [ $kernel = "eps" ] || [ $kernel = "drelax" ]; then 
-				 get_primary_lsg.sh -m ${profile} -k ${kernel} -- ./${prog} $infile
+				 get_primary_gpu.sh -m ${profile} -k ${kernel} -- ./${prog} $infile
 			 else
 				 get_primary_lsg.sh -m ${profile} -k ${kernel} -- ./${prog} $args
 			 fi
