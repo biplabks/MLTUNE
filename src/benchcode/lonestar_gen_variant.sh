@@ -108,9 +108,8 @@ done
 
 [ "$prog" ] || { echo "no program specified. exiting ..."; exit 0; }
 
-
 # enviornment specific variables; needs to be set at install time 
-LONESTAR_HOME=${HOME}/Experiments/Lonestar
+LONESTAR_HOME=${HOME}/Lonestar
 DATA_DIR=/usr/local/datasets/graphs
 input_dir=${DATA_DIR}
 ref_output_dir=${input_dir}
@@ -203,7 +202,8 @@ function build {
     sed -i "s/REGCAP=/REGCAP=--maxrregcount=${maxreg}/" ${MAKEFILE}
   fi
   if [ ${blocksize} != "default" ]; then
-    sed -i "s/BLOCKPARAM=/BLOCKPARAM=-DML/" ${MAKEFILE}
+    sed -i "s/ML=/ML=-DML/" ${MAKEFILE}
+    sed -i "s/__BLOCKSIZE=/__BLOCKSIZE=-D__BLOCKSIZE=${blocksize}/" ${MAKEFILE}
 	fi  
 
 	if [ "${embed}" ]; then 
@@ -268,7 +268,7 @@ function build {
 				#otherwise the .orig will become corrupted if this .sh file terminates before restore
 				#and impact all future runs. Can be easily fixed, but users may not notice.
 				cp ${srcfile} ${srcfile}.orig
-				sed -i "s/__BLOCKSIZE0/${blocksize}/g" ${srcfile}
+#				sed -i "s/__BLOCKSIZE0/${blocksize}/g" ${srcfile}
       fi  
 
       (make ${prog} 2>&1)  > tmp
@@ -277,7 +277,8 @@ function build {
 			if [ ${kernel} = "eps" ]; then 
 				regs=`cat tmp | grep "registers" | awk '{ print $5 }'`
 			else
-				regs=`cat tmp | grep ${kernel} -A 2 | grep "registers" | awk '{ print $5 }'`
+#				regs=`cat tmp | grep ${kernel} -A 2 | grep "registers" | awk '{ print $5 }'`
+				regs=`cat tmp | grep "registers" | awk '{ print $5 }'`
 			fi
       if [ "${debug}" ]; then 
 				cp tmp regs.dbg
