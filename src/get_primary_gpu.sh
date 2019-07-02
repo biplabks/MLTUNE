@@ -81,16 +81,27 @@ if [ ${metric} = "time" ] || [ ${metric} = "pwr" ]; then
 		if [ "$kernel" = "none" ]; then 
 			time=`cat tmp | grep "Time(%)" -m 1 -A 2 2>&1 | tail -1 | awk '{print $2/($1/100)}'`
 		else 
-			time=`cat tmp | grep  "${kernel}(" | awk '{printf $4}'`
+			time=`cat tmp | grep  "${kernel}(" | awk '{if ($1 == "GPU") print $4; else print $2}'`
 		fi
 		time=`echo $time | awk '{printf "%3.3f", $1}'`
-		
-		pwr=`cat tmp  | grep "Power" | awk '{print $6}'`
+
+		h2d=`cat tmp | grep "HtoD" | awk '{if ($1 == "GPU") print $4; else print $2}'`
+		d2h=`cat tmp | grep "DtoH" | awk '{if ($1 == "GPU") print $4; else print $2}'`
+
+		pwr=`cat tmp  | grep "Power" | awk '{print $6}'`  # peak
+#		pwr=`cat tmp  | grep "Power" | awk '{print $4}'`  # average
 		pwr=`echo $pwr | awk '{printf "%3.2f", $1/1000}'`
 fi
 
 if [ ${metric} = "time" ]; then 
-    echo $time 
+    echo -n $time 
+		if [ ${h2d} ]; then
+				echo -n ,$h2d
+		fi
+		if [ ${d2h} ]; then
+				echo -n ,$d2h
+		fi
+		echo ""
 fi
 
 if [ ${metric} = "pwr" ]; then 
