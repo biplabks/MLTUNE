@@ -6,14 +6,16 @@ function usage() {
 Usage:  get_primary_gpu.sh [ OPTIONS ] -- prog [ prog args ]
 
 Options: 
-   --help            print this help message
+   --help    print this help message
    -a        run benchmark with all available input sets 
 
 Optionss with values:
 
-   -m, --metric <metric>    performance <metric> to collect; options are time,pwr,memvid,ipc,arithmetic intensity
+   -m, --metric <metric>    performance <metric> to collect; options are 
+                            time,pwr,memvid,ipc,intensity,occupancy
+
    -k, --kernel <kernel>    <kernel> to profile
-   -b <bench>      <bench> is a Hetero-Mark executable
+   -b <bench>               <bench> is a Hetero-Mark executable
 Examples:
 
    ./get_primary_gpu.sh -m pwr -k matrix_multiply -- mm 1000  
@@ -189,4 +191,46 @@ if [ ${metric} = "occupancy" ]; then
 			occupancy=`nvprof --metrics achieved_occupancy $execstr 2>&1 | grep ${kernel} -A 1 | awk '{print $7}'`
 			echo $occupancy | awk '{print $NF}'
 		fi
+fi
+
+if [ ${metric} = "gflops" ]; then 
+    # try single precision first
+		counter="flop_count_sp"
+		if [ $kernel = "none" ]; then 
+			flop=`nvprof --metrics ${counter} $execstr 2>&1 | grep ${counter} | awk '{print $NF}'`		
+		else
+			flop=`nvprof --metrics ${counter} $execstr 2>&1 | grep ${kernel} -A 1 | grep ${counter} | awk '{print $NF}'`		
+		fi
+		# if no SP count, try double precision
+		if [ "$flop" -eq 0 ]; then
+				counter="flop_count_dp"
+				flop=`nvprof --metrics ${counter} $execstr 2>&1 | grep ${kernel} -A 1 | grep ${counter} | awk '{print $NF}'`		
+				if [ "$flop" -eq 0 ]; then
+						counter="inst_executed"
+						flop=`nvprof --metrics ${counter} $execstr 2>&1 | grep ${kernel} -A 1 | grep ${counter} | awk '{print $NF}'`		
+				fi
+				if [ "$flop" -eq 0 ]; then
+						echo "not a floating-point application. Can only compute intensity of FP applications"
+						exit 0
+				fi
+		fi
+
+		(nvprof -u ms --system-profiling on  $execstr > prog.out) 2> tmp
+		if [ "$kernel" = "none" ]; then 
+			time=`cat tmp | grep "Time(%)" -m 1 -A 2 2>&1 | tail -1 | awk '{print $2/($1/100)}'`
+		else 
+			time=`cat tmp | grep  "${kernel}(" | awk '{if ($1 == "GPU") print $4; else print $2}'`
+		fi
+		time=`echo $time | awk '{printf "%3.3f", $1}'`
+		h2d=`cat tmp | grep "HtoD" | awk '{if ($1 == "GPU") print $4; else print $2}'`
+		d2h=`cat tmp | grep "DtoH" | awk '{if ($1 == "GPU") print $4; else print $2}'`
+
+		if [ ${h2d} ]; then
+			echo -n $time,$h2d,
+		else
+			h2d=0.0
+			echo -n $time,$h2d,
+		fi
+		echo $flop $time $h2d | awk '{printf "%3.2f\n", ($1 /1000000000) / (($2 + $3)/1000) }'
+
 fi
