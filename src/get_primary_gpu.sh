@@ -11,11 +11,20 @@ Options:
 
 Optionss with values:
 
-   -m, --metric <metric>    performance <metric> to collect; options are 
-                            time,pwr,memvid,ipc,intensity,occupancy
+   -m, --metric <metric>    
+              The performance <metric> to be evaluated. 
+              <metric> can be one of the following
+                  time: 
+                  pwr: 
+                  memdiv: 
+                  ipc:
+                  intensity: 
+                  occupancy:
+                  reuse: reuse ratio
 
    -k, --kernel <kernel>    <kernel> to profile
    -b <bench>               <bench> is a Hetero-Mark executable
+
 Examples:
 
    ./get_primary_gpu.sh -m pwr -k matrix_multiply -- mm 1000  
@@ -24,20 +33,8 @@ EOF
 	exit 1
 }
 
-if [ "$1" = "--help" ]; then
+if [ "$1" = "--help" ] || [ $# -lt 1 ]; then
 	usage
-fi
-
-
-if [ $# -lt 1 ]; then
-  echo "usage :"
-  echo "    $0  <options> -- prog [ prog args ]"
-  echo " Options "
-  echo -e "    -m |--metric\t  [time,pwr,memdiv,ipc,intensity] "
-  echo -e "    -k |--kernel\t  kernel name"
-  echo "    prog = path to executable or script (for workloads)"
-  echo "    prog args = arguments to program or script"
-  exit
 fi
 
 
@@ -77,6 +74,13 @@ if [ $DEBUG ]; then
     echo $execstr
 fi
 
+function cleanup() {
+	# clean up 
+	if [ ! "$keep" ]; then 
+			rm -rf tmp prog.out, profile.tmp
+	fi
+}
+
 if [ ${metric} = "time" ] || [ ${metric} = "pwr" ]; then 
 
 		(nvprof -u ms --system-profiling on  $execstr > prog.out) 2> tmp
@@ -108,11 +112,6 @@ fi
 
 if [ ${metric} = "pwr" ]; then 
     echo $pwr 
-fi
-
-# clean up 
-if [ ! "$keep" ]; then 
-	rm -rf tmp prog.out
 fi
 
 
@@ -234,3 +233,61 @@ if [ ${metric} = "gflops" ]; then
 		echo $flop $time $h2d | awk '{printf "%3.2f\n", ($1 /1000000000) / (($2 + $3)/1000) }'
 
 fi
+
+if [ ${metric} = "reuse" ]; then
+    # get volume of data copied over PCIe using memcpy
+		nvprof -u ms  --print-gpu-trace --system-profiling on $execstr 2> profile.tmp
+
+		# get unit
+		unit=`cat profile.tmp | head -5 | tail -1 | awk '{print $5}'`
+
+		case $unit in
+    "B")
+			multiplier=1
+			;;
+    "KB")
+			multiplier=1.0e+3
+			;;
+    "MB")
+			multiplier=1.0e+6
+			;;
+    "GB")
+			multiplier=1.0e+9
+			;;
+    *)
+      echo "Could not determine unit of data copy, bailing..."
+			cleanup
+      exit 0
+      ;;
+		esac
+
+		h2d_copy=`cat profile.tmp | grep memcpy | grep HtoD | awk -v byte_convert=$multiplier '{print $8 * byte_convert}'`
+		sum=0
+		for i in ${h2d_copy}; do
+			# only consider whole bytes (strip out digits right of the decimal
+			i=`echo $i | awk -F "." '{print $1}'`
+			sum=$(($sum+$i)) 
+		done 
+		h2d_copy=$sum
+		
+		d2h_copy=`cat profile.tmp | grep memcpy | grep DtoH | awk -v byte_convert=$multiplier '{print $8 * byte_convert}'`
+		sum=0
+		for i in ${d2h_copy}; do
+			sum=$(($sum+$i)) 
+		done 
+		d2h_copy=$sum
+		
+		# get volume of traffice between devicem memory and L2 cache 
+    nvprof -u ms -m dram_read_bytes,dram_write_bytes --system-profiling on $execstr 2> profile.tmp
+    dram2l2=`cat profile.tmp | grep dram_read | awk '{print $NF}'`
+    l22dram=`cat profile.tmp | grep dram_write | awk '{print $NF}'`
+
+		reuse_ratio=`echo $h2d_copy $d2h_copy $dram2l2 $l22dram | awk '{printf "%3.2f", ($3 + $4)/($1 + $2)}'`
+		echo $h2d_copy,$d2h_copy,$dram2l2,$l22dram,${reuse_ratio}
+
+		
+				#				cat profile.tmp | grep memcpy | awk '{print $9}'
+		
+fi
+
+
