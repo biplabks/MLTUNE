@@ -34,6 +34,8 @@ Optionss with values:
 
                   reuse: reuse ratio
 
+									migration: data migration
+
    -k, --kernel <kernel>    <kernel> to profile
    -b <bench>               <bench> is a Hetero-Mark executable
 
@@ -337,6 +339,76 @@ if [ ${metric} = "cache" ]; then
 		echo $l1
 fi
 
+
+if [ ${metric} = "migration" ]; then
+
+		(nvprof -u ms --system-profiling on $execstr > prog.out) 2> profile.tmp
+		h2d=`cat profile.tmp | grep "Host To" | awk  '{print $5}'`
+
+		for m in B KB MB GB; do 
+			unit_check=`echo $h2d | grep $m`
+			if [ ${unit_check} ]; then
+					unit=$m
+					h2d=`echo $h2d | sed 's/$m//'`
+			fi
+		done
+
+		case $unit in
+    "B")
+			multiplier=1
+			;;
+    "KB")
+			multiplier=1.0e+3
+			;;
+    "MB")
+			multiplier=1.0e+6
+			;;
+    "GB")
+			multiplier=1.0e+9
+			;;
+    *)
+      echo "Could not determine unit of data copy, bailing..."
+			cleanup
+      exit 0
+      ;;
+		esac
+		
+		h2d=`echo $h2d | awk -v byte_convert=$multiplier '{print $1 * byte_convert}'`
+
+		d2h=`cat profile.tmp | grep "Device To" | awk  '{print $5}'`
+
+		for m in B KB MB GB; do 
+			unit_check=`echo $d2h | grep $m`
+			if [ ${unit_check} ]; then
+					unit=$m
+					d2h=`echo $d2h | sed 's/$m//'`
+			fi
+		done
+
+		case $unit in
+    "B")
+			multiplier=1
+			;;
+    "KB")
+			multiplier=1.0e+3
+			;;
+    "MB")
+			multiplier=1.0e+6
+			;;
+    "GB")
+			multiplier=1.0e+9
+			;;
+    *)
+      echo "Could not determine unit of data copy, bailing..."
+			cleanup
+      exit 0
+      ;;
+		esac
+
+		d2h=`echo $d2h | awk -v byte_convert=$multiplier '{print $1 * byte_convert}'`
+		echo $h2d,$d2h
+
+fi
 
 if [ ${metric} = "reuse" ]; then
     # get volume of data copied over PCIe using memcpy
