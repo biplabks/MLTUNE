@@ -10,6 +10,7 @@ bfs_eps=5
 bh=6
 dmr=7
 mst=8
+sssp=9
 
 # base algm enum
 bfs=0
@@ -25,6 +26,7 @@ progs[${bfs_eps}]="eps"
 progs[${bh}]="bh"
 progs[${dmr}]="dmr"
 progs[${mst}]="mst"
+progs[${sssp}]="sssp"
 
 # prog names 
 progs_main[$bfs]="bfs"
@@ -36,6 +38,7 @@ progs_main[${bfs_eps}]="eps"
 progs_main[${bh}]="bh"
 progs_main[${dmr}]="dmr"
 progs_main[${mst}]="mst"
+progs_main[${sssp}]="sssp"
 
 # prog names 
 kernels_base[$bfs]="drelax"
@@ -47,6 +50,7 @@ kernels_base[${bfs_eps}]="eps"
 kernels_base[${bh}]="ForceCalculationKernel"
 kernels_base[${dmr}]="refine"
 kernels_base[${mst}]="dfindelemin2"
+kernels_base[${sssp}]="drelax"
 
 args_small[${bh}]="30000 50 0"
 args_small[${dmr}]="${input_dir}/250k.2 20"
