@@ -69,7 +69,7 @@ while [ $# -gt 0 ]; do
       max_thrds="$2"
       shift 
       ;;
-    -n|--min_thrds)
+    -n|--min_blks)
       min_blks="$2"
       shift 
       ;;
@@ -272,40 +272,15 @@ function build {
       fi  
 
       (make ${prog} 2>&1)  > tmp
-
       spills=`cat tmp | grep "spill" | awk '{print $5 + $9}'`
 			if [ ${kernel} = "eps" ]; then 
 				regs=`cat tmp | grep "registers" | awk '{ print $5 }'`
 			else
-#				regs=`cat tmp | grep ${kernel} -A 2 | grep "registers" | awk '{ print $5 }'`
-				regs=`cat tmp | grep "registers" | awk '{ print $5 }'`
+				regs=`cat tmp | grep ${kernel} -A 2 | grep "registers" | awk '{ print $5 }'`
+#				regs=`cat tmp | grep "registers" | awk '{ print $5 }'`
 			fi
       if [ "${debug}" ]; then 
 				cp tmp regs.dbg
-      fi
-      
-
-      if [ $ver = "cuda_base" ]; then 
-          if [ $prog = "histo" ]; then
-              regs=`echo $regs | awk '{print $3}'`
-          fi
-          if [ $prog = "mri-gridding" ]; then
-              regs=`echo $regs | awk '{print $2}'`
-          fi
-          if [ $prog = "sad" ]; then
-              regs=`echo $regs | awk '{print $1}'`
-          fi
-          if [ $prog = "track" ]; then
-              regs=`echo $regs | awk '{print $1}'`
-          fi
-      fi
-      
-      if [ $ver = "cuda" ]; then 
-          if [ $prog = "mri-q" ] || [ $prog = "mri-gridding" ]; then
-              regs=`echo $regs | awk '{print $2}'`
-          else
-              regs=`echo $regs | awk '{print $1}'`
-          fi
       fi
       
       if [ "${showspills}" ]; then

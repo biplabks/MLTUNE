@@ -34,6 +34,8 @@ Optionss with values:
 
                   reuse: reuse ratio
 
+									fault: fault concurrency
+
 									migration: data migration
 
    -k, --kernel <kernel>    <kernel> to profile
@@ -105,9 +107,12 @@ if [ ${metric} = "time" ] || [ ${metric} = "pwr" ]; then
 
 		(nvprof -u ms --system-profiling on  $execstr > prog.out) 2> tmp
 		if [ "$kernel" = "none" ]; then 
-			time=`cat tmp | grep "Time(%)" -m 1 -A 2 2>&1 | tail -1 | awk '{print $2/($1/100)}'`
+				if [ "$verbose" ]; then 
+						echo "no kernel specified; cannot measure execution time"
+				fi
+				time=0.0
 		else 
-			time=`cat tmp | grep  "${kernel}(" | awk '{if ($1 == "GPU") print $4; else print $2}'`
+			time=`cat tmp | grep  "${kernel}(" | awk '{if ($1 == "GPU") print $6; else print $4}'` # average time per kernel
 		fi
 		time=`echo $time | awk '{printf "%3.3f", $1}'`
 
@@ -410,7 +415,32 @@ if [ ${metric} = "migration" ]; then
 
 fi
 
-if [ ${metric} = "reuse" ]; then
+
+if [ ${metric} = "fault" ]; then
+    # get volume of data copied over PCIe using memcpy
+		(nvprof -u ms  --print-gpu-trace --system-profiling on $execstr > prog.out) 2> profile.tmp
+
+		# get unit
+		faults=`cat profile.tmp | grep "GPU page" | awk '{print $18}'`
+		sum=0
+		num_groups=0
+		for i in ${faults}; do
+			sum=$(($sum + $i)) 
+			num_groups=$((${num_groups} + 1))
+		done 
+		faults=$sum
+		candidate_faults=$(($faults - 1))
+
+		concurrent_faults=$(($faults - ${num_groups}))
+		fault_concurrency=`echo ${concurrent_faults} ${candidate_faults} | awk '{printf "%3.2f", $1 / $2}'`
+
+		if [ "$more" ]; then
+				echo -n -e $faults,${num_groups},
+		fi
+		echo ${fault_concurrency}
+fi
+
+		if [ ${metric} = "reuse" ]; then
     # get volume of data copied over PCIe using memcpy
 		(nvprof -u ms  --print-gpu-trace --system-profiling on $execstr > prog.out) 2> profile.tmp
 
