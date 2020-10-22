@@ -284,7 +284,12 @@ if [ ${metric} = "gflops" ]; then
 		if [ $kernel = "none" ]; then 
 			flop=`nvprof --metrics ${counter} $execstr 2>&1 | grep ${counter} | awk '{print $NF}'`		
 		else
+#			echo "nvprof --metrics ${counter} $execstr 2>&1 | grep ${kernel} -A 1 | grep ${counter} | awk '{print $NF}'"
 			flop=`nvprof --metrics ${counter} $execstr 2>&1 | grep ${kernel} -A 1 | grep ${counter} | awk '{print $NF}'`		
+		fi
+		if [ "$flop" = "" ]; then
+				echo "something wrong"
+				exit 0
 		fi
 		# if no SP count, try double precision
 		if [ "$flop" -eq 0 ]; then
@@ -310,14 +315,15 @@ if [ ${metric} = "gflops" ]; then
 		h2d=`cat tmp | grep "HtoD" | awk '{if ($1 == "GPU") print $4; else print $2}'`
 		d2h=`cat tmp | grep "DtoH" | awk '{if ($1 == "GPU") print $4; else print $2}'`
 
-		if [ ${h2d} ]; then
-			echo -n $time,$h2d,
-		else
-			h2d=0.0
-			echo -n $time,$h2d,
-		fi
-		echo $flop $time $h2d | awk '{printf "%3.2f,", ($1 /1000000000) / (($2 + $3)/1000) }'
-		echo $flop $time $h2d | awk '{printf "%3.2f\n", ($1 /1000000000) / ($2/1000) }'
+		# if [ ${h2d} ]; then
+		# 	echo -n $time,$h2d,
+		# else
+		# 	h2d=0.0
+		# 	echo -n $time,$h2d,
+		# fi
+#		echo $flop $time $h2d | awk '{printf "%3.2f,", ($1 /1000000000) / (($2 + $3)/1000) }'
+		echo -n $time,
+		echo $flop $time | awk '{printf "%3.2f\n", ($1 /1000000000) / ($2/1000) }'
 
 fi
 
@@ -440,7 +446,7 @@ if [ ${metric} = "fault" ]; then
 		echo ${fault_concurrency}
 fi
 
-		if [ ${metric} = "reuse" ]; then
+if [ ${metric} = "reuse" ]; then
     # get volume of data copied over PCIe using memcpy
 		(nvprof -u ms  --print-gpu-trace --system-profiling on $execstr > prog.out) 2> profile.tmp
 
