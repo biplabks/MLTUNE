@@ -62,8 +62,15 @@ while [ $# -gt 0 ]; do
       shift # option has parameter
       ;;
     -k|--kernel)
-      kernel="$2"
-      shift # option has parameter
+			i=0
+			next_kernel="$2"
+			while [ ${next_kernel:0:1} != "-" ]; do
+				kernels[$i]=${next_kernel}
+				i=$(($i + 1))
+				shift
+				next_kernel="$2"
+			done
+			num_kernels=$i
       ;;
 		--keep)
       keep=true
@@ -88,12 +95,14 @@ while [ $# -gt 0 ]; do
 done
 
 [ "$metric" ] || { metric=time; }
-[ "$kernel" ] || { kernel=none; }
+[ "$kernels" ] || { kernels[0]=none; }
 
 if [ $DEBUG ]; then 
     echo $metric
-    echo $kernel
+    echo ${kernels[@]}
+		echo ${num_kernels}
     echo $execstr
+		
 fi
 
 function cleanup() {
@@ -106,15 +115,19 @@ function cleanup() {
 if [ ${metric} = "time" ] || [ ${metric} = "pwr" ]; then 
 
 		(nvprof -u ms --system-profiling on  $execstr > prog.out) 2> tmp
-		if [ "$kernel" = "none" ]; then 
+		if [ "${kernels[0]}" = "none" ]; then 
 				if [ "$verbose" ]; then 
 						echo "no kernel specified; cannot measure execution time"
 				fi
 				time=0.0
 		else 
-			time=`cat tmp | grep  "${kernel}(" | awk '{if ($1 == "GPU") print $6; else print $4}'` # average time per kernel
+			total_time=0
+			for ((i=0; i < ${num_kernels}; i++)); do
+				time=`cat tmp | grep  "${kernels[$i]}(" | awk '{if ($1 == "GPU") print $4; else print $2}'` # average time per kernel
+				total_time=`echo ${total_time} ${time} | awk '{printf "%3.2f", $1 + $2}'`
+			done
 		fi
-		time=`echo $time | awk '{printf "%3.3f", $1}'`
+		total_time=`echo ${total_time} | awk '{printf "%3.3f", $1}'`
 
 		h2d=`cat tmp | grep "HtoD" | awk '{if ($1 == "GPU") print $4; else print $2}'`
 		d2h=`cat tmp | grep "DtoH" | awk '{if ($1 == "GPU") print $4; else print $2}'`
@@ -128,7 +141,7 @@ if [ ${metric} = "time" ]; then
 		if [ "$verbose" ]; then 
 				echo "kernel_execution_time(ms)","H2D_cp_time(ms)","D2H_cp_time(ms)"
 		fi
-		echo -n $time 
+		echo -n ${total_time} 
 		if [ ${h2d} ]; then
 				echo -n ,$h2d
 		fi
@@ -149,12 +162,12 @@ if [ ${metric} = "ctrldiv" ]; then
 	counter[1]="warp_nonpred_execution_efficiency"   # ILP
 	
 	(nvprof --metrics ${counter[0]},${counter[1]} $execstr > prog.out) 2> profile.tmp
-	if [ $kernel = "none" ]; then 
+	if [ ${kernels[0]} = "none" ]; then 
 		branch=`cat profile.tmp | grep ${counter[0]} | head -1 | awk '{print $NF}'` 
 		predicated=`cat profile.tmp | grep ${counter[1]} | head -1 | awk '{print $NF}'` 
 	else
-		branch=`cat profile.tmp | grep ${kernel} -A 2 | grep ${counter[0]} | awk '{print $NF}'` 
-		predicated=`cat profile.tmp | grep ${kernel} -A 2 | grep ${counter[1]} | awk '{print $NF}'` 
+		branch=`cat profile.tmp | grep ${kernels[0]} -A 2 | grep ${counter[0]} | awk '{print $NF}'` 
+		predicated=`cat profile.tmp | grep ${kernels[0]} -A 2 | grep ${counter[1]} | awk '{print $NF}'` 
 	fi
 	branch=`echo ${branch} | sed 's/\%//g'` 
 	predicated=`echo ${predicated} | sed 's/\%//g'` 
@@ -167,12 +180,12 @@ fi
 if [ ${metric} = "memdiv" ]; then 
 
 	(nvprof --metrics gld_transactions_per_request,gst_transactions_per_request $execstr > prog.out) 2> profile.tmp
-	if [ $kernel = "none" ]; then 
+	if [ ${kernels[0]} = "none" ]; then 
 		ld_div=`cat profile.tmp | grep "gld_transactions_per_request" | head -1 | awk '{print $NF}'` 
 		st_div=`cat profile.tmp | grep "gst_transactions_per_request" | head -1 | awk '{print $NF}'` 
 	else
-		ld_div=`cat profile.tmp | grep ${kernel} -A 3 | grep "gld_transactions_per_request" | awk '{print $NF}'` 
-		st_div=`cat profile.tmp | grep ${kernel} -A 3 | grep "gst_transactions_per_request" | awk '{print $NF}'` 
+		ld_div=`cat profile.tmp | grep ${kernels[0]} -A 3 | grep "gld_transactions_per_request" | awk '{print $NF}'` 
+		st_div=`cat profile.tmp | grep ${kernels[0]} -A 3 | grep "gst_transactions_per_request" | awk '{print $NF}'` 
 	fi
 	ld_clsc=`echo ${ld_div} | awk '{ if ($1 == 0.0) printf "%3.4f", 1.00; else printf "%3.4f", 1/$1 }'` 
 	st_clsc=`echo ${st_div} | awk '{ if ($1 == 0.0) printf "%3.4f", 1.00; else printf "%3.4f", 1/$1 }'` 
@@ -194,7 +207,7 @@ if [ ${metric} = "ipc" ]; then
 			ipc=`nvprof --metrics ipc $execstr 2>&1 | grep ipc | awk '{print $7}'`
 			echo $ipc | awk '{printf "%3.3f\n", $1}'
 		else
-			ipc=`nvprof --metrics ipc $execstr 2>&1 | grep ${kernel} -A 1 | awk '{print $7}'`
+			ipc=`nvprof --metrics ipc $execstr 2>&1 | grep ${kernels[0]} -A 1 | awk '{print $7}'`
 			echo $ipc | awk '{printf "%3.3f\n", $NF}'
 		fi
 fi
@@ -202,18 +215,18 @@ fi
 if [ ${metric} = "intensity" ]; then
 		# try single precision first
 		counter="flop_count_sp"
-		if [ $kernel = "none" ]; then 
+		if [ ${kernels[0]} = "none" ]; then 
 			flop=`nvprof --metrics ${counter} $execstr 2>&1 | grep ${counter} | awk '{print $NF}'`		
 		else
-			flop=`nvprof --metrics ${counter} $execstr 2>&1 | grep ${kernel} -A 1 | grep ${counter} | awk '{print $NF}'`		
+			flop=`nvprof --metrics ${counter} $execstr 2>&1 | grep ${kernels[0]} -A 1 | grep ${counter} | awk '{print $NF}'`		
 		fi
 		# if no SP count, try double precision
 		if [ "$flop" -eq 0 ]; then
 				counter="flop_count_dp"
-				flop=`nvprof --metrics ${counter} $execstr 2>&1 | grep ${kernel} -A 1 | grep ${counter} | awk '{print $NF}'`		
+				flop=`nvprof --metrics ${counter} $execstr 2>&1 | grep ${kernels[0]} -A 1 | grep ${counter} | awk '{print $NF}'`		
 				if [ "$flop" -eq 0 ]; then
 						counter="inst_executed"
-						flop=`nvprof --metrics ${counter} $execstr 2>&1 | grep ${kernel} -A 1 | grep ${counter} | awk '{print $NF}'`		
+						flop=`nvprof --metrics ${counter} $execstr 2>&1 | grep ${kernels[0]} -A 1 | grep ${counter} | awk '{print $NF}'`		
 				else
 						echo "Cannot determine intensity, no arithmetic operations performed"
 						exit 0
@@ -267,8 +280,8 @@ if [ ${metric} = "parallelism" ]; then
 			ilp=`echo $ilp | awk '{print $1}'`
 			ilp=`echo $ilp | sed 's/\%//g'`
 		else
-			occupancy=`cat profile.tmp | grep ${kernel} -A 2  | grep ${counter[0]} | awk '{print $NF}'`
-			ilp=`cat profile.tmp | grep ${kernel} -A 2  | grep ${counter[1]} | awk '{print $NF}'`
+			occupancy=`cat profile.tmp | grep ${kernels[0]} -A 2  | grep ${counter[0]} | awk '{print $NF}'`
+			ilp=`cat profile.tmp | grep ${kernels[0]} -A 2  | grep ${counter[1]} | awk '{print $NF}'`
 			ilp=`echo $ilp | sed 's/\%//g'`
 		fi
 
@@ -281,11 +294,11 @@ fi
 if [ ${metric} = "gflops" ]; then 
     # try single precision first
 		counter="flop_count_sp"
-		if [ $kernel = "none" ]; then 
+		if [ ${kernels[0]} = "none" ]; then 
 			flop=`nvprof --metrics ${counter} $execstr 2>&1 | grep ${counter} | awk '{print $NF}'`		
 		else
-#			echo "nvprof --metrics ${counter} $execstr 2>&1 | grep ${kernel} -A 1 | grep ${counter} | awk '{print $NF}'"
-			flop=`nvprof --metrics ${counter} $execstr 2>&1 | grep ${kernel} -A 1 | grep ${counter} | awk '{print $NF}'`		
+#			echo "nvprof --metrics ${counter} $execstr 2>&1 | grep ${kernels[0]} -A 1 | grep ${counter} | awk '{print $NF}'"
+			flop=`nvprof --metrics ${counter} $execstr 2>&1 | grep ${kernels[0]} -A 1 | grep ${counter} | awk '{print $NF}'`		
 		fi
 		if [ "$flop" = "" ]; then
 				echo "something wrong"
@@ -294,10 +307,10 @@ if [ ${metric} = "gflops" ]; then
 		# if no SP count, try double precision
 		if [ "$flop" -eq 0 ]; then
 				counter="flop_count_dp"
-				flop=`nvprof --metrics ${counter} $execstr 2>&1 | grep ${kernel} -A 1 | grep ${counter} | awk '{print $NF}'`		
+				flop=`nvprof --metrics ${counter} $execstr 2>&1 | grep ${kernels[0]} -A 1 | grep ${counter} | awk '{print $NF}'`		
 				if [ "$flop" -eq 0 ]; then
 						counter="inst_executed"
-						flop=`nvprof --metrics ${counter} $execstr 2>&1 | grep ${kernel} -A 1 | grep ${counter} | awk '{print $NF}'`		
+						flop=`nvprof --metrics ${counter} $execstr 2>&1 | grep ${kernels[0]} -A 1 | grep ${counter} | awk '{print $NF}'`		
 				fi
 				if [ "$flop" -eq 0 ]; then
 						echo "not a floating-point application. Can only compute intensity of FP applications"
@@ -306,10 +319,10 @@ if [ ${metric} = "gflops" ]; then
 		fi
 
 		(nvprof -u ms --system-profiling on  $execstr > prog.out) 2> tmp
-		if [ "$kernel" = "none" ]; then 
+		if [ "${kernels[0]}" = "none" ]; then 
 			time=`cat tmp | grep "Time(%)" -m 1 -A 2 2>&1 | tail -1 | awk '{print $2/($1/100)}'`
 		else 
-			time=`cat tmp | grep  "${kernel}(" | awk '{if ($1 == "GPU") print $4; else print $2}'`
+			time=`cat tmp | grep  "${kernels[0]}(" | awk '{if ($1 == "GPU") print $4; else print $2}'`
 		fi
 		time=`echo $time | awk '{printf "%3.3f", $1}'`
 		h2d=`cat tmp | grep "HtoD" | awk '{if ($1 == "GPU") print $4; else print $2}'`
@@ -329,11 +342,11 @@ fi
 
 if [ ${metric} = "cache" ]; then
 		(nvprof -u ms -m l2_tex_read_hit_rate,l2_tex_write_hit_rate,tex_cache_hit_rate --system-profiling on $execstr > prog.out) 2> profile.tmp
-		l2_read=`cat profile.tmp | grep -A 3 "${kernel}(" | grep read_hit | awk '{print $NF}'`		
+		l2_read=`cat profile.tmp | grep -A 3 "${kernels[0]}(" | grep read_hit | awk '{print $NF}'`		
 		l2_read=`echo ${l2_read} | sed 's/\%//g'`
-		l2_write=`cat profile.tmp | grep -A 3 "${kernel}(" | grep write_hit | awk '{print $NF}'`		
+		l2_write=`cat profile.tmp | grep -A 3 "${kernels[0]}(" | grep write_hit | awk '{print $NF}'`		
 		l2_write=`echo ${l2_write} | sed 's/\%//g'`
-		l1=`cat profile.tmp | grep -A 3 "${kernel}(" | grep tex_cache | awk '{print $NF}'`		
+		l1=`cat profile.tmp | grep -A 3 "${kernels[0]}(" | grep tex_cache | awk '{print $NF}'`		
 		l1=`echo ${l1} | sed 's/\%//g'`
 		if [ "$verbose" ]; then 
 				echo -n -e "L2_read_hit_rate",
@@ -494,18 +507,18 @@ if [ ${metric} = "reuse" ]; then
 		# get volume of traffice between device memory and L2 cache 
     (nvprof -u ms -m dram_read_bytes,dram_write_bytes --system-profiling on $execstr > prog.out) 2> profile.tmp
 		invocations=`cat profile.tmp | grep dram_read | awk '{print $1}'`
-		if [ "$kernel" = "none" ]; then 
+		if [ "${kernels[0]}" = "none" ]; then 
 				dram2l2=`cat profile.tmp | grep dram_read | awk '{print $NF}'`
 				dram2l2=`echo $dram2l2 | awk '{print $1}'`
 		else
-				dram2l2=`cat profile.tmp | grep -A 1 "${kernel}(" | grep dram_read | awk '{print $NF}'`
+				dram2l2=`cat profile.tmp | grep -A 1 "${kernels[0]}(" | grep dram_read | awk '{print $NF}'`
 		fi
 		dram2l2=`echo $dram2l2 $invocations | awk '{print $1 * $2}'`
-		if [ "$kernel" = "none" ]; then 
+		if [ "${kernels[0]}" = "none" ]; then 
 				l22dram=`cat profile.tmp | grep dram_write | awk '{print $NF}'`
 				l22dram=`echo $l22dram | awk '{print $1}'`
 		else
-				l22dram=`cat profile.tmp | grep -A 2 "${kernel}(" | grep dram_write | awk '{print $NF}'`
+				l22dram=`cat profile.tmp | grep -A 2 "${kernels[0]}(" | grep dram_write | awk '{print $NF}'`
 		fi
 		l22dram=`echo $l22dram $invocations | awk '{print $1 * $2}'`
 		reuse_ratio=`echo $h2d_copy $d2h_copy $dram2l2 $l22dram | awk '{printf "%3.2f", ($3 + $4)/($1 + $2)}'`

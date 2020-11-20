@@ -11,6 +11,7 @@ bh=6
 dmr=7
 mst=8
 sssp=9
+pr=10
 
 # base algm enum
 bfs=0
@@ -27,6 +28,7 @@ progs[${bh}]="bh"
 progs[${dmr}]="dmr"
 progs[${mst}]="mst"
 progs[${sssp}]="sssp"
+progs[${pr}]="pr"
 
 # prog names 
 progs_main[$bfs]="bfs"
@@ -51,6 +53,7 @@ kernels_base[${bh}]="ForceCalculationKernel"
 kernels_base[${dmr}]="refine"
 kernels_base[${mst}]="dfindelemin2"
 kernels_base[${sssp}]="drelax"
+kernels_base[${pr}]="gg_main_pipe_1_gpu_gb"
 
 args_small[${bh}]="30000 50 0"
 args_small[${dmr}]="${input_dir}/250k.2 20"

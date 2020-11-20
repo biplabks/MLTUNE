@@ -1,0 +1,1 @@
+../src/benchcode/lonestar_4_gen_variant.sh
