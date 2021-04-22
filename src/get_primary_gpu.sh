@@ -133,8 +133,9 @@ if [ ${metric} = "time" ] || [ ${metric} = "pwr" ]; then
 		d2h=`cat tmp | grep "DtoH" | awk '{if ($1 == "GPU") print $4; else print $2}'`
 
 		pwr=`cat tmp  | grep "Power" | awk '{print $6}'`  # peak
-#		pwr=`cat tmp  | grep "Power" | awk '{print $4}'`  # average
+		pwr_avg=`cat tmp  | grep "Power" | awk '{print $4}'`  # average
 		pwr=`echo $pwr | awk '{printf "%3.2f", $1/1000}'`
+		pwr_avg=`echo $pwr_avg | awk '{printf "%3.2f", $1/1000}'`
 fi
 
 if [ ${metric} = "time" ]; then 
@@ -152,7 +153,7 @@ if [ ${metric} = "time" ]; then
 fi
 
 if [ ${metric} = "pwr" ]; then 
-    echo $pwr 
+    echo $pwr ${pwr_avg}
 fi
 
 

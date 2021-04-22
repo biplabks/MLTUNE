@@ -155,6 +155,7 @@ fi
 #DEBUG=1
 if [ $DEBUG ]; then 
    echo $prog
+	 echo ${placement}
    echo $ver
    echo $maxreg
    echo ${max_thrds}
@@ -200,6 +201,7 @@ function build {
   fi
   if [ ${maxreg} != "default" ]; then
     sed -i "s/REGCAP=/REGCAP=--maxrregcount=${maxreg}/" ${MAKEFILE}
+		sed -i "s/DEVREGCAP/DEVREGCAP=--ptxas-options --device-function-maxrregcount=${maxreg}/" ${MAKEFILE}
   fi
   if [ ${blocksize} != "default" ]; then
     sed -i "s/ML=/ML=-DML/" ${MAKEFILE}
@@ -301,6 +303,7 @@ function build {
 				fi
 				popd > /dev/null
         # back in makefile dir
+#				cp ${MAKEFILE} ${MAKEFILE}.tmp
 				cp ${MAKEFILE}.orig ${MAKEFILE}
 				popd > /dev/null
 				exit 1
