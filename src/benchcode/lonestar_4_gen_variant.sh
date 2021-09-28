@@ -165,7 +165,7 @@ function build {
 	[ -x ${srcdir} ] || { "unable to find src directory for $prog; exiting ..." ; exit 1; }  
 
   pushd ${MAKEFILE_DIR} > /dev/null
-
+	
 	# create copy of original makefile 
   cp ${MAKEFILE} ${MAKEFILE}.orig
   
@@ -221,7 +221,10 @@ function build {
 	fi
 	
   pushd $srcdir > /dev/null
-  make clean &> /dev/null
+
+	# commented out for pr experiment; only need to re-compile the srcfile
+	# full recompilation takes a long time 
+	# make clean &> /dev/null
 	
   if [ ${blocksize} != "default" ]; then
 			case ${prog} in 
@@ -238,7 +241,8 @@ function build {
 			#			cp ${srcfile} ${srcfile}.orig
   fi  
 	
-  (make 2>&1)  > tmp
+	touch $srcfile
+  (make 2>&1) > tmp
   spills=`cat tmp | grep "spill" | awk '{print $5 + $9}'`
 	regs=`cat tmp | grep ${kernel} -A 2 | grep "registers" | awk '{ print $5 }'`
 		#				regs=`cat tmp | grep "registers" | awk '{ print $5 }'`

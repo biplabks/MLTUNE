@@ -153,7 +153,7 @@ if [ ${metric} = "time" ]; then
 fi
 
 if [ ${metric} = "pwr" ]; then 
-    echo $pwr ${pwr_avg}
+    echo $pwr,${pwr_avg}
 fi
 
 
