@@ -217,14 +217,14 @@ function build {
 			popd  > /dev/null
 
 			# back in top-level directory 
-			make rt  &> /dev/null
+			make rt # &> /dev/null
 	fi
 	
   pushd $srcdir > /dev/null
 
 	# commented out for pr experiment; only need to re-compile the srcfile
 	# full recompilation takes a long time 
-	# make clean &> /dev/null
+	make clean &> /dev/null
 	
   if [ ${blocksize} != "default" ]; then
 			case ${prog} in 
@@ -241,8 +241,8 @@ function build {
 			#			cp ${srcfile} ${srcfile}.orig
   fi  
 	
-	touch $srcfile
-  (make 2>&1) > tmp
+	# touch $srcfile
+  (make 2>&1) # > tmp
   spills=`cat tmp | grep "spill" | awk '{print $5 + $9}'`
 	regs=`cat tmp | grep ${kernel} -A 2 | grep "registers" | awk '{ print $5 }'`
 		#				regs=`cat tmp | grep "registers" | awk '{ print $5 }'`
